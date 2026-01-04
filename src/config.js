@@ -4,7 +4,7 @@
 import { Capacitor } from '@capacitor/core';
 
 // Your Railway deployment URL
-const PRODUCTION_API = 'https://webnephtracker-production.up.railway.app';
+const PRODUCTION_API = 'https://output-tracker-production.up.railway.app';
 
 // Use production API when running in native app, relative path for web
 export const API_BASE = Capacitor.isNativePlatform() ? PRODUCTION_API : '';
