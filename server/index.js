@@ -19,7 +19,7 @@ const port = process.env.PORT || 5173;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased for voice audio
 
 // DB Connection
 const pool = new Pool({
