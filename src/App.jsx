@@ -4,9 +4,11 @@ import QuickLogView from './views/QuickLogView';
 import HistoryView from './views/HistoryView';
 import SummaryView from './views/SummaryView';
 import AuthScreen from './components/AuthScreen';
+import DiagnosticsPanel from './components/DiagnosticsPanel';
 import { useData, useToast } from './hooks';
 import { syncData } from './sync';
 import { Icons } from './components/Icons';
+import { API_BASE, isNative, platform } from './config';
 
 const TABS = [
     { id: 'log', label: 'Log', icon: <Icons.Plus /> },
@@ -42,14 +44,17 @@ export default function App() {
     }, [user, passphrase, data.refresh]);
 
     const handleAuth = async (isLogin, username, password, pass) => {
-        const endpoint = isLogin ? '/api/login' : '/api/register';
+        const endpoint = isLogin ? `${API_BASE}/api/login` : `${API_BASE}/api/register`;
+        console.log('[AUTH] Attempting', isLogin ? 'login' : 'register', 'to:', endpoint);
         try {
             const resp = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
+            console.log('[AUTH] Response status:', resp.status);
             const result = await resp.json();
+            console.log('[AUTH] Response body:', result);
             if (result.token) {
                 const userData = { username, token: result.token };
                 localStorage.setItem('user', JSON.stringify(userData));
@@ -62,7 +67,8 @@ export default function App() {
                 alert(result.error || 'Auth failed');
             }
         } catch (e) {
-            alert('Connection failed. Make sure server is running.');
+            console.error('[AUTH] Connection error:', e);
+            alert(`Connection failed: ${e.message}\n\nPlatform: ${platform}\nAPI: ${API_BASE || '(empty)'}`);
         }
     };
 
