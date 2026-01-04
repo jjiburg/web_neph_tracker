@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from './Icons';
+import { API_BASE } from '../config';
 
 const SILENCE_THRESHOLD = 0.08; // Audio level below this is considered silence
 const SILENCE_DURATION = 1500; // Stop after 1.5 seconds of silence
@@ -172,9 +173,9 @@ export default function VoiceButton({ onCommand, showToast }) {
             }
 
             const base64 = await blobToBase64(audioBlob);
-            console.log('[VoiceButton] Sending to /api/voice...');
+            console.log('[VoiceButton] Sending to API...');
 
-            const response = await fetch('/api/voice', {
+            const response = await fetch(`${API_BASE}/api/voice`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ audio: base64, mimeType })

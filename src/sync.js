@@ -1,8 +1,7 @@
 // NephTrack Sync Service
 import { encryptData, decryptData } from './encryption';
 import { openDB } from 'idb';
-
-const API_BASE = '/api';
+import { API_BASE } from './config';
 
 export async function syncData(passphrase, token) {
     if (!passphrase || !token) return;
