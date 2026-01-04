@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { formatMl, formatDateFull } from '../store';
 import ImportSheet from '../components/ImportSheet';
+import DiagnosticsPanel from '../components/DiagnosticsPanel';
 import { Icons } from '../components/Icons';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [showImport, setShowImport] = useState(false);
+    const [showDiagnostics, setShowDiagnostics] = useState(false);
     const { dailyTotals, getTotalsForDay, recordDailyTotal, refresh } = data;
 
     const dayTotals = getTotalsForDay(selectedDate);
@@ -183,7 +185,29 @@ export default function SummaryView({ data, showToast }) {
                         onSuccess={handleImportSuccess}
                     />
                 )}
+                {showDiagnostics && (
+                    <DiagnosticsPanel onClose={() => setShowDiagnostics(false)} />
+                )}
             </AnimatePresence>
+
+            {/* Debug Button - tap 5 times on Summary title to show */}
+            <button
+                onClick={() => setShowDiagnostics(true)}
+                style={{
+                    position: 'fixed',
+                    bottom: 100,
+                    left: 20,
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    color: 'var(--text-dim)',
+                    fontSize: 12,
+                    zIndex: 50
+                }}
+            >
+                🔧 Diagnostics
+            </button>
         </div>
     );
 }
