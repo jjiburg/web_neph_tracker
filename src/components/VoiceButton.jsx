@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from './Icons';
 
-const SILENCE_THRESHOLD = 0.01; // Audio level below this is considered silence
+const SILENCE_THRESHOLD = 0.02; // Audio level below this is considered silence (increased)
 const SILENCE_DURATION = 1500; // Stop after 1.5 seconds of silence
+const MIN_RECORD_TIME = 500; // Minimum recording time before VAD kicks in
 
 export default function VoiceButton({ onCommand, showToast }) {
     const [isRecording, setIsRecording] = useState(false);
@@ -15,37 +16,104 @@ export default function VoiceButton({ onCommand, showToast }) {
     const analyserRef = useRef(null);
     const silenceStartRef = useRef(null);
     const animationFrameRef = useRef(null);
-    const streamRef = useRef(null);
+    const recordingStartRef = useRef(null);
+    const isRecordingRef = useRef(false); // Track recording state for callbacks
 
     useEffect(() => {
         return () => {
-            // Cleanup on unmount
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
-            if (audioContextRef.current) {
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close();
             }
         };
     }, []);
 
+    const stopRecording = useCallback(() => {
+        console.log('[VoiceButton] Stop recording called, isRecordingRef:', isRecordingRef.current);
+        if (mediaRecorderRef.current && isRecordingRef.current) {
+            isRecordingRef.current = false;
+            setIsRecording(false);
+            setAudioLevel(0);
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+                animationFrameRef.current = null;
+            }
+            mediaRecorderRef.current.stop();
+            console.log('[VoiceButton] MediaRecorder.stop() called');
+        }
+    }, []);
+
+    const monitorAudioLevel = useCallback(() => {
+        if (!analyserRef.current || !isRecordingRef.current) return;
+
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        // Calculate RMS (root mean square) for better volume detection
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            sum += (dataArray[i] / 255) ** 2;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        setAudioLevel(rms);
+
+        // Log periodically for debugging
+        if (Math.random() < 0.1) {
+            console.log('[VoiceButton] Audio level:', rms.toFixed(4), 'Threshold:', SILENCE_THRESHOLD);
+        }
+
+        // Don't check VAD until minimum recording time passed
+        const elapsed = Date.now() - recordingStartRef.current;
+        if (elapsed < MIN_RECORD_TIME) {
+            animationFrameRef.current = requestAnimationFrame(monitorAudioLevel);
+            return;
+        }
+
+        if (rms < SILENCE_THRESHOLD) {
+            if (!silenceStartRef.current) {
+                silenceStartRef.current = Date.now();
+                console.log('[VoiceButton] Silence detected, starting timer...');
+            } else if (Date.now() - silenceStartRef.current > SILENCE_DURATION) {
+                console.log('[VoiceButton] Auto-stopping after', SILENCE_DURATION, 'ms of silence');
+                stopRecording();
+                return;
+            }
+        } else {
+            if (silenceStartRef.current) {
+                console.log('[VoiceButton] Speech detected, resetting silence timer');
+            }
+            silenceStartRef.current = null;
+        }
+
+        animationFrameRef.current = requestAnimationFrame(monitorAudioLevel);
+    }, [stopRecording]);
+
     const startRecording = async () => {
         console.log('[VoiceButton] Starting recording...');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            streamRef.current = stream;
             console.log('[VoiceButton] Microphone access granted');
 
-            // Set up audio analysis for VAD
+            // Set up AudioContext for VAD
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Safari requires resuming AudioContext after user interaction
+            if (audioContextRef.current.state === 'suspended') {
+                await audioContextRef.current.resume();
+                console.log('[VoiceButton] AudioContext resumed');
+            }
+
             analyserRef.current = audioContextRef.current.createAnalyser();
-            analyserRef.current.fftSize = 256;
+            analyserRef.current.fftSize = 512;
+            analyserRef.current.smoothingTimeConstant = 0.3;
             const source = audioContextRef.current.createMediaStreamSource(stream);
             source.connect(analyserRef.current);
 
-            // Start monitoring audio levels
+            // Reset timers
             silenceStartRef.current = null;
-            monitorAudioLevel();
+            recordingStartRef.current = Date.now();
 
             // Set up MediaRecorder
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -62,66 +130,31 @@ export default function VoiceButton({ onCommand, showToast }) {
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
                     chunksRef.current.push(e.data);
+                    console.log('[VoiceButton] Data chunk:', e.data.size, 'bytes');
                 }
             };
 
             mediaRecorder.onstop = async () => {
-                console.log('[VoiceButton] Recording stopped, chunks:', chunksRef.current.length);
+                console.log('[VoiceButton] MediaRecorder onstop, chunks:', chunksRef.current.length);
                 stream.getTracks().forEach(track => track.stop());
-                if (animationFrameRef.current) {
-                    cancelAnimationFrame(animationFrameRef.current);
+                if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                    audioContextRef.current.close();
                 }
                 await processAudio();
             };
 
-            mediaRecorder.start(500); // Collect every 500ms for faster response
+            mediaRecorder.start(500);
+            isRecordingRef.current = true;
             setIsRecording(true);
-            console.log('[VoiceButton] Recording started with VAD');
-            showToast('Listening...');
+
+            // Start monitoring audio level
+            monitorAudioLevel();
+
+            console.log('[VoiceButton] Recording started with VAD enabled');
+            showToast('Listening... (speak then pause)');
         } catch (error) {
             console.error('[VoiceButton] Microphone access error:', error);
             showToast('Microphone access denied');
-        }
-    };
-
-    const monitorAudioLevel = () => {
-        if (!analyserRef.current) return;
-
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
-
-        // Calculate average volume
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length / 255;
-        setAudioLevel(average);
-
-        if (average < SILENCE_THRESHOLD) {
-            // Below threshold - start silence timer
-            if (!silenceStartRef.current) {
-                silenceStartRef.current = Date.now();
-                console.log('[VoiceButton] Silence detected, starting timer...');
-            } else if (Date.now() - silenceStartRef.current > SILENCE_DURATION) {
-                // Silence exceeded threshold - stop recording
-                console.log('[VoiceButton] Auto-stopping after silence');
-                stopRecording();
-                return;
-            }
-        } else {
-            // Sound detected - reset silence timer
-            if (silenceStartRef.current) {
-                console.log('[VoiceButton] Speech detected, resetting timer');
-            }
-            silenceStartRef.current = null;
-        }
-
-        animationFrameRef.current = requestAnimationFrame(monitorAudioLevel);
-    };
-
-    const stopRecording = () => {
-        console.log('[VoiceButton] Stop recording requested');
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            setAudioLevel(0);
         }
     };
 
@@ -134,7 +167,6 @@ export default function VoiceButton({ onCommand, showToast }) {
             console.log('[VoiceButton] Audio blob size:', audioBlob.size, 'bytes');
 
             if (audioBlob.size < 1000) {
-                console.error('[VoiceButton] Audio too short');
                 showToast('Recording too short');
                 return;
             }
@@ -175,6 +207,7 @@ export default function VoiceButton({ onCommand, showToast }) {
     };
 
     const handleClick = () => {
+        console.log('[VoiceButton] Button clicked, isRecording:', isRecording, 'isProcessing:', isProcessing);
         if (isRecording) {
             stopRecording();
         } else if (!isProcessing) {
@@ -182,16 +215,17 @@ export default function VoiceButton({ onCommand, showToast }) {
         }
     };
 
+    // Visual scale based on audio level
+    const visualScale = isRecording ? 1 + (audioLevel * 0.5) : 1;
+
     return (
         <motion.button
             className={`voice-button ${isRecording ? 'recording' : ''} ${isProcessing ? 'processing' : ''}`}
             onClick={handleClick}
             disabled={isProcessing}
             whileTap={{ scale: 0.95 }}
-            style={{
-                // Scale the button slightly based on audio level when recording
-                transform: isRecording ? `scale(${1 + audioLevel * 0.3})` : undefined
-            }}
+            animate={{ scale: visualScale }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         >
             <AnimatePresence mode="wait">
                 {isProcessing ? (
