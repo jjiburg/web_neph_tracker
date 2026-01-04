@@ -218,6 +218,36 @@ h3 {
   filter: brightness(0.9);
 }
 
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  /* Force 3 columns for output buttons */
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.quick-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Increased gap */
+}
+
+/* Specific fix for the Hydration vertical stack to prevent merging */
+.quick-stack .liquid-button {
+  margin-bottom: 0;
+  /* Remove default margins if any, rely on gap */
+  border-radius: 16px;
+  /* consistent soft shape */
+}
+
+.secondary-action {
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .liquid-button--secondary {
   background: rgba(255, 255, 255, 0.05);
   /* Ghost button style */

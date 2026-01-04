@@ -43,96 +43,93 @@ export default function HistoryView({ data }) {
             icon: <Icons.Syringe />,
             color: 'var(--success)',
             onDelete: () => deleteFlushEntry(e.id),
-        }));
 
-        bowels.forEach((e) => items.push({
-            id: e.id,
-            type: 'bowel',
-            title: 'Bowel Movement',
-            detail: e.bristolScale > 0 ? `Bristol ${e.bristolScale}${e.note ? ` • ${e.note}` : ''}` : 'Logged',
-            timestamp: e.timestamp,
-            icon: <span style={{ fontSize: '20px' }}>🧻</span>, // Keep emoji for now or find better icon
-            color: 'var(--warning)',
-            onDelete: () => deleteBowelEntry(e.id),
-        }));
+            const filteredEntries = useMemo(() => {
+                if (filter === 'All') return entries;
+                if (filter === 'Intake') return entries.filter(e => e.storeName === 'intake');
+                if (filter === 'Output') return entries.filter(e => e.storeName === 'output');
+                if (filter === 'Flush') return entries.filter(e => e.storeName === 'flush');
+                if (filter === 'Bowel') return entries.filter(e => e.storeName === 'bowel');
+                if (filter === 'Dressing') return entries.filter(e => e.storeName === 'dressing');
+                return entries;
+            }, [entries, filter]);
 
-        dressings.forEach((e) => items.push({
-            id: e.id,
-            type: 'dressing',
-            title: 'Dressing',
-            detail: `${e.state}${e.note ? ` • ${e.note}` : ''}`,
-            timestamp: e.timestamp,
-            icon: <Icons.Bandage />,
-            color: '#a855f7',
-            onDelete: () => deleteDressingEntry(e.id),
-        }));
+            const getIcon = (type) => {
+                switch (type) {
+                    case 'intake': return <Icons.Drop size={20} color="var(--primary)" />;
+                    case 'output': return <Icons.Beaker size={20} color="var(--secondary)" />;
+                    case 'flush': return <Icons.Syringe size={20} color="var(--success)" />;
+                    case 'bowel': return <span style={{ fontSize: '20px' }}>🧻</span>;
+                    case 'dressing': return <Icons.Bandage size={20} color="#a855f7" />;
+                    default: return <Icons.Activity size={20} />;
+                }
+            };
 
-        return items.sort((a, b) => b.timestamp - a.timestamp);
-    }, [intakes, outputs, flushes, bowels, dressings]);
+            const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const formatDate = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
 
-    // Filter items
-    const filteredItems = useMemo(() => {
-        if (filter === 'All') return allItems;
-        return allItems.filter((item) => item.type === filter.toLowerCase());
-    }, [allItems, filter]);
-
-    return (
-        <div className="page">
+            return(
+        <div className = "view-content" >
             <header className="screen-header">
                 <h1 className="screen-header__title">History</h1>
-                <p className="screen-header__subtitle">{filter} Entries</p>
+                <p className="screen-header__subtitle">
+                     {filteredEntries.length} {filteredEntries.length === 1 ? 'Entry' : 'Entries'}
+                </p>
             </header>
 
-            <div className="page__content">
-                {/* Filter Bar */}
-                <div className="filter-bar">
-                    {FILTERS.map((f) => (
-                        <button
-                            key={f}
-                            className={`filter-chip ${filter === f ? 'active' : ''}`}
-                            onClick={() => setFilter(f)}
-                        >
-                            {f}
-                        </button>
-                    ))}
-                </div>
+            <div className="filter-scroll">
+                {['All', 'Intake', 'Output', 'Flush', 'Bowel', 'Dressing'].map((f) => (
+                    <button
+                        key={f}
+                        className={`filter-chip ${filter === f ? 'active' : ''}`}
+                        onClick={() => setFilter(f)}
+                    >
+                        {f}
+                    </button>
+                ))}
+            </div>
 
-                {/* History List */}
-                {filteredItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)' }}>
-                        <div style={{ opacity: 0.5, marginBottom: '16px' }}>
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                        </div>
-                        <p>No history found</p>
-                    </div>
-                ) : (
-                    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                        {filteredItems.map((item, index) => (
-                            <div
-                                key={`${item.type}-${item.id}`}
-                                className="history-item"
-                                style={{ borderBottom: index < filteredItems.length - 1 ? '1px solid var(--glass-border)' : 'none' }}
-                            >
-                                <div
-                                    className="history-item__icon"
-                                    style={{ backgroundColor: `rgba(255,255,255,0.05)`, color: item.color }}
-                                >
-                                    {item.icon}
+            <div className="history-list">
+                <AnimatePresence initial={false}>
+                    {filteredEntries.length === 0 ? (
+                         <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }}
+                            style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-dim)' }}
+                        >
+                            <Icons.Clock size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+                            <p>No records found</p>
+                        </motion.div>
+                    ) : (
+                        filteredEntries.map((entry) => (
+                            <div className="history-item" key={entry.id}>
+                                <div className="history-item__icon">
+                                    {getIcon(entry.storeName)}
                                 </div>
                                 <div className="history-item__content">
-                                    <div className="history-item__title">{item.title}</div>
-                                    <div className="history-item__detail">{item.detail}</div>
+                                    <div className="history-item__title">
+                                        {entry.amountMl ? `${entry.amountMl} ml` : 
+                                         entry.bristolScale ? `Bristol ${entry.bristolScale}` :
+                                         entry.state ? entry.state : 'Record'}
+                                    </div>
+                                    <div className="history-item__subtitle">
+                                        {entry.storeName.charAt(0).toUpperCase() + entry.storeName.slice(1)}
+                                        {entry.type ? ` (${entry.type})` : ''}
+                                        {entry.note ? ` • ${entry.note}` : ''}
+                                    </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div className="history-item__time">{formatTime(item.timestamp)}</div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{formatDate(item.timestamp)}</div>
+                                    <div className="history-item__time">{formatTime(entry.timestamp)}</div>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{formatDate(entry.timestamp)}</div>
                                 </div>
-                                {/* Future: Add delete button here if needed */}
                             </div>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    )}
+                </AnimatePresence>
             </div>
-        </div>
+            
+            {/* Bottom spacer for FAB/Tab bar */ }
+            <div style = {{ height: '80px' }} />
+        </div >
     );
 }
