@@ -79,6 +79,9 @@ The iOS app is generated via Capacitor:
 - When running `npx cap sync ios`, ensure your terminal uses UTF-8 to avoid CocoaPods errors:
   - `export LANG=en_US.UTF-8`
   - `export LC_ALL=en_US.UTF-8`
+- When making changes that impact the iOS app, the coding agent should automatically:
+  - run `npm run build`
+  - run `npx cap sync ios` (after exporting UTF-8 env vars if needed)
 
 ## End-to-End Encryption (E2E)
 
