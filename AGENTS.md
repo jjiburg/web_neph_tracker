@@ -36,6 +36,13 @@ npm run cap:sync
 npm run cap:open:ios
 ```
 
+## Deployment (Railway)
+
+The app is optimized for deployment on Railway as a static site:
+1. Connect your GitHub repository to Railway.
+2. Railway will automatically detect the `start` script and build the project using Vite.
+3. The app is served using `serve` on the port assigned by Railway.
+
 ## Project Structure
 ```
 src/
