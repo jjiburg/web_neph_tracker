@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { runDiagnostics, API_BASE, isNative, platform } from '../config';
+import { clearLocalData } from '../import';
 
 export default function DiagnosticsPanel({ onClose }) {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [syncStatus, setSyncStatus] = useState(null);
+    const [resetting, setResetting] = useState(false);
 
     useEffect(() => {
         try {
@@ -36,6 +38,24 @@ export default function DiagnosticsPanel({ onClose }) {
             setSyncStatus(status);
         } catch {
             setSyncStatus(null);
+        }
+    };
+
+    const handleResetLocalData = async () => {
+        if (!window.confirm('This will permanently delete all local data on this device. Continue?')) return;
+        setResetting(true);
+        try {
+            await clearLocalData();
+            localStorage.removeItem('lastSyncCursor');
+            localStorage.removeItem('syncStatus');
+            localStorage.removeItem('lastSyncTime');
+            setSyncStatus(null);
+            setResults(null);
+            window.location.reload();
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -152,6 +172,18 @@ export default function DiagnosticsPanel({ onClose }) {
                         style={{ width: '100%', marginTop: 16 }}
                     >
                         Close
+                    </button>
+                    <button
+                        className="liquid-button"
+                        onClick={handleResetLocalData}
+                        disabled={resetting}
+                        style={{
+                            width: '100%',
+                            marginTop: 12,
+                            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(248, 113, 113, 0.9))',
+                        }}
+                    >
+                        {resetting ? 'Resetting Local Data...' : 'Reset Local Data'}
                     </button>
                 </div>
             </motion.div>

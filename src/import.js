@@ -13,6 +13,11 @@ async function getDB() {
     return openDB(DB_NAME, DB_VERSION);
 }
 
+export async function clearLocalData() {
+    const db = await getDB();
+    await clearAllStores(db);
+}
+
 /**
  * Parses a NephTrack backup JSON file and imports the data into IndexedDB.
  * @param {string} jsonString - The raw JSON string from the backup file.
