@@ -27,3 +27,4 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+gemini_api_key

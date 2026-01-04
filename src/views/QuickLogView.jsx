@@ -6,6 +6,7 @@ import OutputSheet from '../components/OutputSheet';
 import FlushSheet from '../components/FlushSheet';
 import BowelSheet from '../components/BowelSheet';
 import DressingSheet from '../components/DressingSheet';
+import VoiceButton from '../components/VoiceButton';
 
 export default function QuickLogView({ data, showToast }) {
     const [sheet, setSheet] = useState(null);
@@ -45,6 +46,29 @@ export default function QuickLogView({ data, showToast }) {
     const handleSave = (storeName, entryData) => {
         handleAddEntry(storeName, entryData);
         setSheet(null);
+    };
+
+    const handleVoiceCommand = (command) => {
+        const timestamp = Date.now();
+        switch (command.action) {
+            case 'intake':
+                handleAddEntry('intake', { amountMl: command.amount, note: command.note, timestamp });
+                break;
+            case 'output':
+                handleAddEntry('output', { type: command.type || 'bag', amountMl: command.amount, note: command.note, timestamp });
+                break;
+            case 'flush':
+                handleAddEntry('flush', { amountMl: command.amount || 30, note: command.note, timestamp });
+                break;
+            case 'bowel':
+                handleAddEntry('bowel', { bristolScale: command.bristolScale || 0, note: command.note, timestamp });
+                break;
+            case 'dressing':
+                handleAddEntry('dressing', { state: command.state || 'Checked', note: command.note, timestamp });
+                break;
+            default:
+                showToast('Unknown command');
+        }
     };
 
     return (
@@ -158,6 +182,9 @@ export default function QuickLogView({ data, showToast }) {
                     Log Status
                 </button>
             </div>
+
+            {/* Voice Button */}
+            <VoiceButton onCommand={handleVoiceCommand} showToast={showToast} />
 
             {/* Bottom spacer */}
             <div style={{ height: 80 }} />

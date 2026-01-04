@@ -685,3 +685,70 @@ body {
 .text-warning {
   color: var(--warning);
 }
+/* --- Voice Button --- */
+.voice-button {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 80px);
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, #0ea5e9 100%);
+  border: none;
+  box-shadow: 0 8px 24px -4px var(--primary-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  z-index: 90;
+  transition: all 0.2s ease;
+  overflow: visible;
+}
+
+.voice-button:active {
+  transform: scale(0.95);
+}
+
+.voice-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.voice-button.recording {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.5);
+}
+
+.voice-button__pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.3);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.voice-button__spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

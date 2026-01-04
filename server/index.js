@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 dotenv.config();
+import setupVoiceRoutes from './gemini.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -133,6 +134,9 @@ app.get('/api/sync/pull', authenticateToken, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// Voice API (Gemini)
+setupVoiceRoutes(app);
 
 // Serve Frontend
 app.use(express.static(path.join(__dirname, '../dist')));
