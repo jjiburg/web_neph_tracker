@@ -1,15 +1,24 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { formatMl, formatDateFull } from '../store';
+import ImportSheet from '../components/ImportSheet';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const { dailyTotals, getTotalsForDay, recordDailyTotal } = data;
+    const [showImport, setShowImport] = useState(false);
+    const { dailyTotals, getTotalsForDay, recordDailyTotal, refresh } = data;
 
     const dayTotals = getTotalsForDay(selectedDate);
 
     const handleRecordEndOfDay = async () => {
         await recordDailyTotal(selectedDate, dayTotals.bagMl, dayTotals.urinalMl, dayTotals.intakeMl);
         showToast(`Recorded totals for ${new Date(selectedDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}`);
+    };
+
+    const handleImportSuccess = () => {
+        setShowImport(false);
+        refresh();
+        showToast('Data imported successfully');
     };
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
@@ -102,6 +111,18 @@ export default function SummaryView({ data, showToast }) {
                     </button>
                 </div>
 
+                {/* Import Backup */}
+                <div className="glass-card">
+                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Data Management</h2>
+                    <button
+                        className="liquid-button"
+                        onClick={() => setShowImport(true)}
+                        style={{ background: 'rgba(255,255,255,0.1)' }}
+                    >
+                        📥 Import Backup from iOS App
+                    </button>
+                </div>
+
                 {/* Daily Totals History */}
                 <div className="glass-card">
                     <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Recorded Daily Totals</h2>
@@ -130,6 +151,16 @@ export default function SummaryView({ data, showToast }) {
                     )}
                 </div>
             </div>
+
+            {/* Import Sheet Modal */}
+            <AnimatePresence>
+                {showImport && (
+                    <ImportSheet
+                        onClose={() => setShowImport(false)}
+                        onSuccess={handleImportSuccess}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
