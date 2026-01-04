@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from './Icons';
 
-const SILENCE_THRESHOLD = 0.02; // Audio level below this is considered silence (increased)
+const SILENCE_THRESHOLD = 0.08; // Audio level below this is considered silence
 const SILENCE_DURATION = 1500; // Stop after 1.5 seconds of silence
 const MIN_RECORD_TIME = 500; // Minimum recording time before VAD kicks in
 
