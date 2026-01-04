@@ -12,6 +12,9 @@ A nephrostomy care tracking app built with React and Capacitor, featuring an iOS
 - **React** (Vite)
 - **Capacitor** for iOS deployment
 - **IndexedDB** (via `idb`) for local persistence
+- **Node.js/Express** for sync server
+- **PostgreSQL** for cloud storage
+- **Web Crypto API** for AES-GCM 256 E2E Encryption
 - **Framer Motion** for animations
 
 ## Development
@@ -38,10 +41,21 @@ npm run cap:open:ios
 
 ## Deployment (Railway)
 
-The app is optimized for deployment on Railway as a static site:
+The app is optimized for deployment on Railway:
 1. Connect your GitHub repository to Railway.
-2. Railway will automatically detect the `start` script and build the project using Vite.
-3. The app is served using `serve` on the port assigned by Railway.
+2. Add a **PostgreSQL** database to your project.
+3. Railway will automatically detect the `start` script and build/run the project.
+4. Set the following Environment Variables in Railway:
+   - `DATABASE_URL`: (Automatically provided by Railway)
+   - `JWT_SECRET`: Any random string for auth tokens.
+
+## End-to-End Encryption (E2E)
+
+NephTrack uses a "Zero-Knowledge" architecture:
+- **Passphrase**: You set a passphrase on your device. This passphrase is NEVER sent to the server.
+- **Encryption**: Data is encrypted using AES-GCM (256-bit) before leaving your device.
+- **Privacy**: The server only sees encrypted blobs. Even if the database is compromised, your health data remains unreadable without your passphrase.
+  - ⚠️ **Important**: If you lose your passphrase, your cloud-synced data cannot be recovered.
 
 ## Project Structure
 ```

@@ -19,36 +19,16 @@ function getDB() {
     if (!dbPromise) {
         dbPromise = openDB(DB_NAME, DB_VERSION, {
             upgrade(db) {
-                // Intake entries
-                if (!db.objectStoreNames.contains(STORES.INTAKE)) {
-                    const intake = db.createObjectStore(STORES.INTAKE, { keyPath: 'id', autoIncrement: true });
-                    intake.createIndex('timestamp', 'timestamp');
-                }
-                // Output entries
-                if (!db.objectStoreNames.contains(STORES.OUTPUT)) {
-                    const output = db.createObjectStore(STORES.OUTPUT, { keyPath: 'id', autoIncrement: true });
-                    output.createIndex('timestamp', 'timestamp');
-                }
-                // Flush entries
-                if (!db.objectStoreNames.contains(STORES.FLUSH)) {
-                    const flush = db.createObjectStore(STORES.FLUSH, { keyPath: 'id', autoIncrement: true });
-                    flush.createIndex('timestamp', 'timestamp');
-                }
-                // Bowel entries
-                if (!db.objectStoreNames.contains(STORES.BOWEL)) {
-                    const bowel = db.createObjectStore(STORES.BOWEL, { keyPath: 'id', autoIncrement: true });
-                    bowel.createIndex('timestamp', 'timestamp');
-                }
-                // Dressing entries
-                if (!db.objectStoreNames.contains(STORES.DRESSING)) {
-                    const dressing = db.createObjectStore(STORES.DRESSING, { keyPath: 'id', autoIncrement: true });
-                    dressing.createIndex('timestamp', 'timestamp');
-                }
-                // Daily totals
-                if (!db.objectStoreNames.contains(STORES.DAILY_TOTALS)) {
-                    const totals = db.createObjectStore(STORES.DAILY_TOTALS, { keyPath: 'id', autoIncrement: true });
-                    totals.createIndex('date', 'date');
-                }
+                Object.values(STORES).forEach(storeName => {
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        const store = db.createObjectStore(storeName, { keyPath: 'id' });
+                        store.createIndex('timestamp', 'timestamp');
+                        store.createIndex('synced', 'synced');
+                        if (storeName === STORES.DAILY_TOTALS) {
+                            store.createIndex('date', 'date');
+                        }
+                    }
+                });
             },
         });
     }
@@ -58,7 +38,14 @@ function getDB() {
 // Generic CRUD operations
 async function addEntry(storeName, entry) {
     const db = await getDB();
-    const id = await db.add(storeName, { ...entry, timestamp: entry.timestamp || Date.now() });
+    const id = window.crypto.randomUUID();
+    const record = {
+        ...entry,
+        id,
+        timestamp: entry.timestamp || Date.now(),
+        synced: false
+    };
+    await db.add(storeName, record);
     return id;
 }
 
@@ -158,14 +145,17 @@ export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) 
         existing.urinalMl = urinalMl;
         existing.totalMl = bagMl + urinalMl;
         existing.intakeMl = intakeMl;
+        existing.synced = false;
         return db.put(STORES.DAILY_TOTALS, existing);
     } else {
         return db.add(STORES.DAILY_TOTALS, {
+            id: window.crypto.randomUUID(),
             date: dateStr,
             bagMl,
             urinalMl,
             totalMl: bagMl + urinalMl,
             intakeMl,
+            synced: false,
         });
     }
 };

@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import QuickLogView from './views/QuickLogView';
 import HistoryView from './views/HistoryView';
 import SummaryView from './views/SummaryView';
+import AuthScreen from './components/AuthScreen';
 import { useData, useToast } from './hooks';
+import { syncData } from './sync';
 
 const TABS = [
     { id: 'log', label: 'Log', icon: '➕' },
@@ -13,20 +15,64 @@ const TABS = [
 
 export default function App() {
     const [activeTab, setActiveTab] = useState('log');
+    const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
+    const [passphrase, setPassphrase] = useState(() => localStorage.getItem('passphrase') || '');
+    const [showAuth, setShowAuth] = useState(!user || !passphrase);
+
     const data = useData();
     const { toast, showToast } = useToast();
 
-    // Try to init Capacitor plugins
+    // Capacitor & Sync initialization
     useEffect(() => {
         (async () => {
             try {
                 const { StatusBar } = await import('@capacitor/status-bar');
                 await StatusBar.setStyle({ style: 'DARK' });
-            } catch (e) {
-                // Not running in Capacitor
-            }
+            } catch (e) { }
         })();
-    }, []);
+
+        if (user?.token && passphrase) {
+            const interval = setInterval(() => {
+                syncData(passphrase, user.token).then(data.refresh);
+            }, 30000);
+            syncData(passphrase, user.token).then(data.refresh);
+            return () => clearInterval(interval);
+        }
+    }, [user, passphrase, data.refresh]);
+
+    const handleAuth = async (isLogin, username, password, pass) => {
+        const endpoint = isLogin ? '/api/login' : '/api/register';
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const result = await resp.json();
+            if (result.token) {
+                const userData = { username, token: result.token };
+                localStorage.setItem('user', JSON.stringify(userData));
+                localStorage.setItem('passphrase', pass);
+                setUser(userData);
+                setPassphrase(pass);
+                setShowAuth(false);
+                showToast('Securely signed in');
+            } else {
+                alert(result.error || 'Auth failed');
+            }
+        } catch (e) {
+            alert('Connection failed. Make sure server is running.');
+        }
+    };
+
+    if (showAuth) {
+        return (
+            <>
+                <div className="liquid-background" />
+                <AuthScreen onAuth={handleAuth} initialPassphrase={passphrase} />
+            </>
+        );
+    }
 
     const renderView = () => {
         switch (activeTab) {
@@ -45,6 +91,17 @@ export default function App() {
         <>
             {/* Animated Liquid Background */}
             <div className="liquid-background" />
+
+            {/* Logout button */}
+            <div style={{ position: 'fixed', top: 'calc(var(--safe-top) + 12px)', right: '20px', zIndex: 1000 }}>
+                <button
+                    onClick={() => { localStorage.clear(); window.location.reload(); }}
+                    className="liquid-button--chip"
+                    style={{ fontSize: '11px', minHeight: '30px' }}
+                >
+                    Logout
+                </button>
+            </div>
 
             {/* Toast */}
             <AnimatePresence>
