@@ -1,21 +1,53 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from './Icons';
+
+const SILENCE_THRESHOLD = 0.01; // Audio level below this is considered silence
+const SILENCE_DURATION = 1500; // Stop after 1.5 seconds of silence
 
 export default function VoiceButton({ onCommand, showToast }) {
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [audioLevel, setAudioLevel] = useState(0);
     const mediaRecorderRef = useRef(null);
     const chunksRef = useRef([]);
+    const audioContextRef = useRef(null);
+    const analyserRef = useRef(null);
+    const silenceStartRef = useRef(null);
+    const animationFrameRef = useRef(null);
+    const streamRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            // Cleanup on unmount
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
+            }
+        };
+    }, []);
 
     const startRecording = async () => {
         console.log('[VoiceButton] Starting recording...');
         try {
-            console.log('[VoiceButton] Requesting microphone access...');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = stream;
             console.log('[VoiceButton] Microphone access granted');
 
-            // Check supported mime types
+            // Set up audio analysis for VAD
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            analyserRef.current = audioContextRef.current.createAnalyser();
+            analyserRef.current.fftSize = 256;
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+            source.connect(analyserRef.current);
+
+            // Start monitoring audio levels
+            silenceStartRef.current = null;
+            monitorAudioLevel();
+
+            // Set up MediaRecorder
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
                 : MediaRecorder.isTypeSupported('audio/webm')
@@ -28,7 +60,6 @@ export default function VoiceButton({ onCommand, showToast }) {
             chunksRef.current = [];
 
             mediaRecorder.ondataavailable = (e) => {
-                console.log('[VoiceButton] Data available, size:', e.data.size);
                 if (e.data.size > 0) {
                     chunksRef.current.push(e.data);
                 }
@@ -37,20 +68,52 @@ export default function VoiceButton({ onCommand, showToast }) {
             mediaRecorder.onstop = async () => {
                 console.log('[VoiceButton] Recording stopped, chunks:', chunksRef.current.length);
                 stream.getTracks().forEach(track => track.stop());
+                if (animationFrameRef.current) {
+                    cancelAnimationFrame(animationFrameRef.current);
+                }
                 await processAudio();
             };
 
-            mediaRecorder.onerror = (e) => {
-                console.error('[VoiceButton] MediaRecorder error:', e);
-            };
-
-            mediaRecorder.start(1000); // Collect data every second
+            mediaRecorder.start(500); // Collect every 500ms for faster response
             setIsRecording(true);
-            console.log('[VoiceButton] Recording started');
+            console.log('[VoiceButton] Recording started with VAD');
+            showToast('Listening...');
         } catch (error) {
             console.error('[VoiceButton] Microphone access error:', error);
             showToast('Microphone access denied');
         }
+    };
+
+    const monitorAudioLevel = () => {
+        if (!analyserRef.current) return;
+
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        // Calculate average volume
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length / 255;
+        setAudioLevel(average);
+
+        if (average < SILENCE_THRESHOLD) {
+            // Below threshold - start silence timer
+            if (!silenceStartRef.current) {
+                silenceStartRef.current = Date.now();
+                console.log('[VoiceButton] Silence detected, starting timer...');
+            } else if (Date.now() - silenceStartRef.current > SILENCE_DURATION) {
+                // Silence exceeded threshold - stop recording
+                console.log('[VoiceButton] Auto-stopping after silence');
+                stopRecording();
+                return;
+            }
+        } else {
+            // Sound detected - reset silence timer
+            if (silenceStartRef.current) {
+                console.log('[VoiceButton] Speech detected, resetting timer');
+            }
+            silenceStartRef.current = null;
+        }
+
+        animationFrameRef.current = requestAnimationFrame(monitorAudioLevel);
     };
 
     const stopRecording = () => {
@@ -58,7 +121,7 @@ export default function VoiceButton({ onCommand, showToast }) {
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
-            console.log('[VoiceButton] MediaRecorder.stop() called');
+            setAudioLevel(0);
         }
     };
 
@@ -67,22 +130,18 @@ export default function VoiceButton({ onCommand, showToast }) {
         setIsProcessing(true);
         try {
             const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-            console.log('[VoiceButton] Creating blob with mimeType:', mimeType);
-
             const audioBlob = new Blob(chunksRef.current, { type: mimeType });
             console.log('[VoiceButton] Audio blob size:', audioBlob.size, 'bytes');
 
-            if (audioBlob.size === 0) {
-                console.error('[VoiceButton] Audio blob is empty!');
-                showToast('No audio recorded');
+            if (audioBlob.size < 1000) {
+                console.error('[VoiceButton] Audio too short');
+                showToast('Recording too short');
                 return;
             }
 
-            console.log('[VoiceButton] Converting to base64...');
             const base64 = await blobToBase64(audioBlob);
-            console.log('[VoiceButton] Base64 length:', base64.length);
-
             console.log('[VoiceButton] Sending to /api/voice...');
+
             const response = await fetch('/api/voice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -91,13 +150,11 @@ export default function VoiceButton({ onCommand, showToast }) {
 
             console.log('[VoiceButton] Response status:', response.status);
             const result = await response.json();
-            console.log('[VoiceButton] Response body:', JSON.stringify(result));
+            console.log('[VoiceButton] Response:', JSON.stringify(result));
 
             if (result.error) {
-                console.error('[VoiceButton] API error:', result.error, result.details);
-                showToast(result.error + (result.details ? `: ${result.details}` : ''));
+                showToast(result.error);
             } else {
-                console.log('[VoiceButton] Success! Calling onCommand with:', result);
                 onCommand(result);
             }
         } catch (error) {
@@ -111,20 +168,13 @@ export default function VoiceButton({ onCommand, showToast }) {
     const blobToBase64 = (blob) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64 = reader.result.split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = (e) => {
-                console.error('[VoiceButton] FileReader error:', e);
-                reject(e);
-            };
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
             reader.readAsDataURL(blob);
         });
     };
 
     const handleClick = () => {
-        console.log('[VoiceButton] Button clicked, isRecording:', isRecording, 'isProcessing:', isProcessing);
         if (isRecording) {
             stopRecording();
         } else if (!isProcessing) {
@@ -138,6 +188,10 @@ export default function VoiceButton({ onCommand, showToast }) {
             onClick={handleClick}
             disabled={isProcessing}
             whileTap={{ scale: 0.95 }}
+            style={{
+                // Scale the button slightly based on audio level when recording
+                transform: isRecording ? `scale(${1 + audioLevel * 0.3})` : undefined
+            }}
         >
             <AnimatePresence mode="wait">
                 {isProcessing ? (
