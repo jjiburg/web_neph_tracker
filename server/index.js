@@ -18,7 +18,13 @@ const app = express();
 const port = process.env.PORT || 5173;
 
 // Middleware
-app.use(cors());
+// Configure CORS for web and Capacitor (iOS/Android)
+app.use(cors({
+    origin: true, // Allow all origins (for Capacitor)
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '10mb' })); // Increased for voice audio
 
 // Health check endpoint (for diagnostics)
