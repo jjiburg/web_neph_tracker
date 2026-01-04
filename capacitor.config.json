@@ -1,25 +1,25 @@
 {
-    "appId": "com.nephtrack.app",
-    "appName": "NephTrack",
-    "webDir": "dist",
-    "server": {
-        "androidScheme": "https"
+  "appId": "com.nephtrack.app",
+  "appName": "NephTrack",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0d0d14"
     },
-    "plugins": {
-        "StatusBar": {
-            "style": "DARK",
-            "backgroundColor": "#0d0d14"
-        },
-        "SplashScreen": {
-            "launchShowDuration": 2000,
-            "backgroundColor": "#0d0d14",
-            "showSpinner": false
-        }
-    },
-    "ios": {
-        "contentInset": "always",
-        "allowsLinkPreview": false,
-        "scrollEnabled": true,
-        "limitsNavigationsToAppBoundDomains": true
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0d0d14",
+      "showSpinner": false
     }
+  },
+  "ios": {
+    "contentInset": "always",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": true
+  }
 }
