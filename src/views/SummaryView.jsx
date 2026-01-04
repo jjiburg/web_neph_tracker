@@ -164,7 +164,7 @@ export default function SummaryView({ data, showToast }) {
                                     <div>
                                         <div style={{ fontWeight: 600 }}>{formatDateFull(total.date)}</div>
                                         <div className="text-dim" style={{ fontSize: '13px', marginTop: '2px' }}>
-                                            In: {formatMl(total.intakeMl)} • Out: {formatMl(total.totalMl)}
+                                            In: {formatMl(total.intakeMl)} • Bag: {formatMl(total.bagMl)} • Normal: {formatMl(total.urinalMl)}
                                         </div>
                                     </div>
                                     <div style={{ color: 'var(--secondary)', fontWeight: 700 }}>

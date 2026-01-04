@@ -7,6 +7,7 @@ const STORES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals']
 const STORE_ALIASES = {
     bag: 'output',
     urinal: 'output',
+    void: 'output',
     outputs: 'output',
     intakes: 'intake',
     flushes: 'flush',
@@ -70,6 +71,11 @@ function normalizeStoreName(type) {
     if (!type) return null;
     const normalized = STORE_ALIASES[type] || type;
     return STORES.includes(normalized) ? normalized : null;
+}
+
+function normalizeOutputType(type) {
+    if (type === 'void') return 'urinal';
+    return type;
 }
 
 function getEntryTimestamp(entry) {
@@ -207,7 +213,7 @@ export async function syncData(passphrase, token) {
                     const record = {
                         ...decrypted,
                         id: entry.id,
-                        type: entry.type,
+                        type: normalizeOutputType(entry.type),
                         timestamp: new Date(entry.timestamp).getTime(),
                         updatedAt: incomingUpdatedAt,
                         deleted: Boolean(entry.deleted),
