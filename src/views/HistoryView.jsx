@@ -1,79 +1,51 @@
 import { useState, useMemo } from 'react';
-import { formatMl, formatTime, formatDate } from '../store';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '../components/Icons';
-
-const FILTERS = ['All', 'Intake', 'Output', 'Flush', 'Bowel', 'Dressing'];
 
 export default function HistoryView({ data }) {
     const [filter, setFilter] = useState('All');
-    const { intakes, outputs, flushes, bowels, dressings, deleteIntakeEntry, deleteOutputEntry, deleteFlushEntry, deleteBowelEntry, deleteDressingEntry } = data;
 
-    // Combine and sort all entries
-    const allItems = useMemo(() => {
-        const items = [];
+    // Combine all data streams into one flat list
+    const entries = useMemo(() => {
+        return [
+            ...data.intakes.map(e => ({ ...e, storeName: 'intake' })),
+            ...data.outputs.map(e => ({ ...e, storeName: 'output' })),
+            ...data.flushes.map(e => ({ ...e, storeName: 'flush' })),
+            ...data.bowels.map(e => ({ ...e, storeName: 'bowel' })),
+            ...data.dressings.map(e => ({ ...e, storeName: 'dressing' })),
+        ].sort((a, b) => b.timestamp - a.timestamp);
+    }, [data.intakes, data.outputs, data.flushes, data.bowels, data.dressings]);
 
-        intakes.forEach((e) => items.push({
-            id: e.id,
-            type: 'intake',
-            title: 'Intake',
-            detail: `${formatMl(e.amountMl)}${e.note ? ` • ${e.note}` : ''}`,
-            timestamp: e.timestamp,
-            icon: <Icons.Drop />,
-            color: 'var(--primary)',
-            onDelete: () => deleteIntakeEntry(e.id),
-        }));
+    const filteredEntries = useMemo(() => {
+        if (filter === 'All') return entries;
+        if (filter === 'Intake') return entries.filter(e => e.storeName === 'intake');
+        if (filter === 'Output') return entries.filter(e => e.storeName === 'output');
+        if (filter === 'Flush') return entries.filter(e => e.storeName === 'flush');
+        if (filter === 'Bowel') return entries.filter(e => e.storeName === 'bowel');
+        if (filter === 'Dressing') return entries.filter(e => e.storeName === 'dressing');
+        return entries;
+    }, [entries, filter]);
 
-        outputs.forEach((e) => items.push({
-            id: e.id,
-            type: 'output',
-            title: e.type === 'bag' ? 'Bag Output' : 'Voided Output',
-            detail: `${formatMl(e.amountMl)}${e.colorNote ? ` • ${e.colorNote}` : ''}`,
-            timestamp: e.timestamp,
-            icon: e.type === 'bag' ? <Icons.Beaker /> : <Icons.Beaker />,
-            color: 'var(--secondary)',
-            onDelete: () => deleteOutputEntry(e.id),
-        }));
+    const getIcon = (type) => {
+        switch (type) {
+            case 'intake': return <Icons.Drop size={20} color="var(--primary)" />;
+            case 'output': return <Icons.Beaker size={20} color="var(--secondary)" />;
+            case 'flush': return <Icons.Syringe size={20} color="var(--success)" />;
+            case 'bowel': return <span style={{ fontSize: '20px' }}>🧻</span>;
+            case 'dressing': return <Icons.Bandage size={20} color="#a855f7" />;
+            default: return <Icons.Activity size={20} />;
+        }
+    };
 
-        flushes.forEach((e) => items.push({
-            id: e.id,
-            type: 'flush',
-            title: 'Flush',
-            detail: e.amountMl > 0 ? `${e.amountMl} ml${e.note ? ` • ${e.note}` : ''}` : 'Logged',
-            timestamp: e.timestamp,
-            icon: <Icons.Syringe />,
-            color: 'var(--success)',
-            onDelete: () => deleteFlushEntry(e.id),
+    const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatDate = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
 
-            const filteredEntries = useMemo(() => {
-                if (filter === 'All') return entries;
-                if (filter === 'Intake') return entries.filter(e => e.storeName === 'intake');
-                if (filter === 'Output') return entries.filter(e => e.storeName === 'output');
-                if (filter === 'Flush') return entries.filter(e => e.storeName === 'flush');
-                if (filter === 'Bowel') return entries.filter(e => e.storeName === 'bowel');
-                if (filter === 'Dressing') return entries.filter(e => e.storeName === 'dressing');
-                return entries;
-            }, [entries, filter]);
-
-            const getIcon = (type) => {
-                switch (type) {
-                    case 'intake': return <Icons.Drop size={20} color="var(--primary)" />;
-                    case 'output': return <Icons.Beaker size={20} color="var(--secondary)" />;
-                    case 'flush': return <Icons.Syringe size={20} color="var(--success)" />;
-                    case 'bowel': return <span style={{ fontSize: '20px' }}>🧻</span>;
-                    case 'dressing': return <Icons.Bandage size={20} color="#a855f7" />;
-                    default: return <Icons.Activity size={20} />;
-                }
-            };
-
-            const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const formatDate = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-            return(
-        <div className = "view-content" >
+    return (
+        <div className="view-content">
             <header className="screen-header">
                 <h1 className="screen-header__title">History</h1>
                 <p className="screen-header__subtitle">
-                     {filteredEntries.length} {filteredEntries.length === 1 ? 'Entry' : 'Entries'}
+                    {filteredEntries.length} {filteredEntries.length === 1 ? 'Entry' : 'Entries'}
                 </p>
             </header>
 
@@ -92,8 +64,8 @@ export default function HistoryView({ data }) {
             <div className="history-list">
                 <AnimatePresence initial={false}>
                     {filteredEntries.length === 0 ? (
-                         <motion.div 
-                            initial={{ opacity: 0 }} 
+                        <motion.div
+                            initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-dim)' }}
                         >
@@ -108,9 +80,9 @@ export default function HistoryView({ data }) {
                                 </div>
                                 <div className="history-item__content">
                                     <div className="history-item__title">
-                                        {entry.amountMl ? `${entry.amountMl} ml` : 
-                                         entry.bristolScale ? `Bristol ${entry.bristolScale}` :
-                                         entry.state ? entry.state : 'Record'}
+                                        {entry.amountMl ? `${entry.amountMl} ml` :
+                                            entry.bristolScale ? `Bristol ${entry.bristolScale}` :
+                                                entry.state ? entry.state : 'Record'}
                                     </div>
                                     <div className="history-item__subtitle">
                                         {entry.storeName.charAt(0).toUpperCase() + entry.storeName.slice(1)}
@@ -127,9 +99,9 @@ export default function HistoryView({ data }) {
                     )}
                 </AnimatePresence>
             </div>
-            
-            {/* Bottom spacer for FAB/Tab bar */ }
-            <div style = {{ height: '80px' }} />
-        </div >
+
+            {/* Bottom spacer for FAB/Tab bar */}
+            <div style={{ height: '80px' }} />
+        </div>
     );
 }
