@@ -72,10 +72,9 @@ function getEntryUpdatedAt(entry) {
 async function getUnsyncedEntries(db, storeName) {
     const tx = db.transaction(storeName, 'readonly');
     const store = tx.objectStore(storeName);
-    const index = store.index('synced');
-    const entries = await index.getAll(false);
+    const entries = await store.getAll();
     await tx.done;
-    return entries;
+    return entries.filter((entry) => !entry.synced);
 }
 
 async function markEntriesSynced(db, storeName, entries, acceptedIds) {
