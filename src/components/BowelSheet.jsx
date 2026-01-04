@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Icons } from './Icons';
 
 const BRISTOL_SCALE = [0, 1, 2, 3, 4, 5, 6, 7];
 
@@ -29,46 +30,54 @@ export default function BowelSheet({ onSave, onClose }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="sheet__handle" />
-                <h2 className="sheet__title">Bowel Movement</h2>
+                <div className="sheet__header">
+                    <span className="sheet__icon text-warning" style={{ fontSize: '24px' }}>🧻</span>
+                    <h2 className="sheet__title">Bowel Movement</h2>
+                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="sheet__content">
                     {/* Bristol Scale */}
                     <div className="input-group">
                         <label className="input-group__label">Bristol Scale</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                        <div className="quick-grid">
                             {BRISTOL_SCALE.map((scale) => (
                                 <button
                                     key={scale}
                                     className={`liquid-button--chip ${bristolScale === scale ? 'active' : ''}`}
                                     onClick={() => setBristolScale(scale)}
-                                    style={{ minWidth: '50px' }}
+                                    style={{ minWidth: '40px' }}
                                 >
                                     {scale === 0 ? 'N/A' : `${scale}`}
                                 </button>
                             ))}
                         </div>
+                        <p className="text-dim" style={{ fontSize: '12px', marginTop: '8px' }}>
+                            Type 1 (hard lumps) to Type 7 (liquid).
+                        </p>
                     </div>
 
                     {/* Note */}
                     <div className="input-group">
-                        <label className="input-group__label">Notes (optional)</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder="Add a note..."
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            style={{ fontSize: '16px' }}
-                        />
+                        <label className="input-group__label">Notes</label>
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Paperclip /></span>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Add a note..."
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     {/* Save */}
                     <button
                         className="liquid-button"
                         onClick={handleSave}
-                        style={{ background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.5) 0%, rgba(249, 115, 22, 0.15) 100%)', borderColor: 'rgba(249, 115, 22, 0.4)', boxShadow: '0 8px 24px rgba(249, 115, 22, 0.3)' }}
+                        style={{ marginTop: '8px', background: 'var(--warning)', boxShadow: '0 8px 24px -4px rgba(251, 191, 36, 0.4)' }}
                     >
-                        Save
+                        Save Entry
                     </button>
                 </div>
             </motion.div>

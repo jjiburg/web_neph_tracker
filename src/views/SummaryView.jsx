@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { formatMl, formatDateFull } from '../store';
 import ImportSheet from '../components/ImportSheet';
+import { Icons } from '../components/Icons';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -25,63 +26,69 @@ export default function SummaryView({ data, showToast }) {
 
     return (
         <div className="page">
-            {/* Header */}
             <header className="screen-header">
                 <h1 className="screen-header__title">Summary</h1>
-                <p className="screen-header__subtitle">{new Date(selectedDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                <p className="screen-header__subtitle">Daily Totals</p>
             </header>
 
             <div className="page__content">
                 {/* Day Picker */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontWeight: 700 }}>Day</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Icons.Calendar />
+                            <span style={{ fontWeight: 600 }}>Date Selected</span>
+                        </div>
                         <input
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                             style={{
-                                background: 'rgba(255,255,255,0.1)',
+                                background: 'rgba(255,255,255,0.05)',
                                 border: '1px solid var(--glass-border)',
                                 borderRadius: '12px',
                                 padding: '8px 12px',
-                                color: 'var(--text-primary)',
-                                fontSize: '16px',
+                                color: 'var(--text-main)',
+                                fontSize: '15px',
+                                fontFamily: 'inherit'
                             }}
                         />
                     </div>
-                    <button
-                        className={`liquid-button--chip ${isToday ? 'active' : ''}`}
-                        onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-                    >
-                        Jump to Today
-                    </button>
+                    {!isToday && (
+                        <button
+                            className="liquid-button liquid-button--secondary"
+                            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                            style={{ height: '44px', minHeight: '44px' }}
+                        >
+                            Jump to Today
+                        </button>
+                    )}
                 </div>
 
                 {/* Summary Card */}
                 <div className="glass-card">
-                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-                        Totals for {new Date(selectedDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                    <h2 className="section__title" style={{ fontSize: '18px', marginBottom: '16px' }}>
+                        {new Date(selectedDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                     </h2>
 
                     <div className="stats-grid">
                         <div className="stat-card">
-                            <div className="stat-card__label">Bag Output</div>
+                            <div className="stat-card__label">Neph Bag</div>
                             <div className="stat-card__value">{formatMl(dayTotals.bagMl)}</div>
                         </div>
                         <div className="stat-card">
-                            <div className="stat-card__label">Voided Output</div>
+                            <div className="stat-card__label">Voided</div>
                             <div className="stat-card__value">{formatMl(dayTotals.urinalMl)}</div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-card__label">Total Output</div>
-                            <div className="stat-card__value" style={{ color: 'var(--accent-secondary)' }}>
+                            <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>
                                 {formatMl(dayTotals.bagMl + dayTotals.urinalMl)}
                             </div>
                         </div>
                         <div className="stat-card">
-                            <div className="stat-card__label">Intake</div>
-                            <div className="stat-card__value" style={{ color: 'var(--accent)' }}>
+                            <div className="stat-card__label">Total Intake</div>
+                            <div className="stat-card__value text-accent">
                                 {formatMl(dayTotals.intakeMl)}
                             </div>
                         </div>
@@ -89,16 +96,16 @@ export default function SummaryView({ data, showToast }) {
 
                     <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                         <div style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Flushes</div>
+                            <div className="stat-card__label">Flushes</div>
                             <div style={{ fontSize: '18px', fontWeight: 700 }}>{dayTotals.flushCount}</div>
                         </div>
                         <div style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>BM</div>
+                            <div className="stat-card__label">Bowels</div>
                             <div style={{ fontSize: '18px', fontWeight: 700 }}>{dayTotals.bowelCount}</div>
                         </div>
                         <div style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Dressing</div>
-                            <div style={{ fontSize: '18px', fontWeight: 700 }}>{dayTotals.latestDressing || 'None'}</div>
+                            <div className="stat-card__label">Dressing</div>
+                            <div style={{ fontSize: '18px', fontWeight: 700 }}>{dayTotals.latestDressing || '-'}</div>
                         </div>
                     </div>
                 </div>
@@ -107,43 +114,59 @@ export default function SummaryView({ data, showToast }) {
                 <div className="glass-card">
                     <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>End of Day</h2>
                     <button className="liquid-button" onClick={handleRecordEndOfDay}>
-                        ✓ Record End of Day Totals
+                        <Icons.Check /> <span style={{ marginLeft: '8px' }}>Record Daily Totals</span>
                     </button>
+                    <p className="text-dim" style={{ fontSize: '13px', marginTop: '12px', textAlign: 'center' }}>
+                        Calculates and saves the final tallies for this date.
+                    </p>
                 </div>
 
                 {/* Import Backup */}
                 <div className="glass-card">
-                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Data Management</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}>
+                            <Icons.Download />
+                        </div>
+                        <div>
+                            <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Import Data</h2>
+                            <p className="text-dim" style={{ fontSize: '13px' }}>Restore from backup</p>
+                        </div>
+                    </div>
+
                     <button
-                        className="liquid-button"
+                        className="liquid-button liquid-button--secondary"
                         onClick={() => setShowImport(true)}
-                        style={{ background: 'rgba(255,255,255,0.1)' }}
                     >
-                        📥 Import Backup from iOS App
+                        Import JSON Backup
                     </button>
                 </div>
 
                 {/* Daily Totals History */}
                 <div className="glass-card">
-                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Recorded Daily Totals</h2>
+                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>History</h2>
                     {dailyTotals.length === 0 ? (
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No totals recorded yet.</p>
+                        <p className="text-dim" style={{ fontSize: '14px' }}>No recorded totals yet.</p>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {dailyTotals.slice(0, 7).map((total) => (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {dailyTotals.slice(0, 10).map((total, index) => (
                                 <div
                                     key={total.id}
                                     style={{
-                                        padding: '12px',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: '12px',
+                                        padding: '16px 0',
+                                        borderBottom: index < dailyTotals.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
                                     }}
                                 >
-                                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>
-                                        {formatDateFull(total.date)}
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{formatDateFull(total.date)}</div>
+                                        <div className="text-dim" style={{ fontSize: '13px', marginTop: '2px' }}>
+                                            In: {formatMl(total.intakeMl)} • Out: {formatMl(total.totalMl)}
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                        Bag {formatMl(total.bagMl)} • Voided {formatMl(total.urinalMl)} • Total {formatMl(total.totalMl)}
+                                    <div style={{ color: 'var(--secondary)', fontWeight: 700 }}>
+                                        {formatMl(total.totalMl)}
                                     </div>
                                 </div>
                             ))}

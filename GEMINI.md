@@ -62,14 +62,20 @@ NephTrack uses a "Zero-Knowledge" architecture:
 src/
 ├── main.jsx          # Entry point
 ├── App.jsx           # Root component with tab navigation
-├── index.css         # Liquid Glass design system
+├── index.css         # Liquid Glass design system (Global Styles)
 ├── store.js          # IndexedDB data layer
 ├── hooks.js          # React hooks for data management
+├── import.js         # JSON backup import utility
+├── encryption.js     # E2E encryption logic
+├── sync.js           # Cloud synchronization service
 ├── views/
 │   ├── QuickLogView.jsx
 │   ├── HistoryView.jsx
 │   └── SummaryView.jsx
 └── components/
+    ├── AuthScreen.jsx
+    ├── Icons.jsx     # Centralized SVG icon definitions
+    ├── ImportSheet.jsx
     ├── IntakeSheet.jsx
     ├── OutputSheet.jsx
     ├── FlushSheet.jsx
@@ -79,10 +85,11 @@ src/
 
 ## Design System
 The app implements iOS 26 "Liquid Glass" aesthetics:
-- Translucent cards with `backdrop-filter: blur()`
-- Animated gradient backgrounds
-- Large, accessible tap targets (min 56px)
-- Floating tab bar with glass material
+- **Glassmorphism**: `glass-card` classes with `backdrop-filter: blur(20px)`, `rgba(255,255,255,0.06)` backgrounds, and `1px solid rgba(255,255,255,0.1)` borders.
+- **Typography**: Inter font, utilizing `text-dim` and `text-accent` utility classes.
+- **Interactive Elements**: `liquid-button` with spring physics and gradient backgrounds.
+- **Iconography**: Centralized SVG icons via `Icons.jsx` replacing legacy emojis.
+- **Animation**: `Framer Motion` for sheet transitions and page enters (`AnimatePresence`).
 
 ## Data Model
 - **IntakeEntry**: amountMl, timestamp, note

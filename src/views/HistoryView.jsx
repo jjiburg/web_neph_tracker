@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { formatMl, formatTime, formatDate } from '../store';
+import { Icons } from '../components/Icons';
 
 const FILTERS = ['All', 'Intake', 'Output', 'Flush', 'Bowel', 'Dressing'];
 
@@ -17,8 +18,8 @@ export default function HistoryView({ data }) {
             title: 'Intake',
             detail: `${formatMl(e.amountMl)}${e.note ? ` • ${e.note}` : ''}`,
             timestamp: e.timestamp,
-            icon: '💧',
-            color: 'var(--accent)',
+            icon: <Icons.Drop />,
+            color: 'var(--primary)',
             onDelete: () => deleteIntakeEntry(e.id),
         }));
 
@@ -28,8 +29,8 @@ export default function HistoryView({ data }) {
             title: e.type === 'bag' ? 'Bag Output' : 'Voided Output',
             detail: `${formatMl(e.amountMl)}${e.colorNote ? ` • ${e.colorNote}` : ''}`,
             timestamp: e.timestamp,
-            icon: e.type === 'bag' ? '🎒' : '🚰',
-            color: 'var(--accent-secondary)',
+            icon: e.type === 'bag' ? <Icons.Beaker /> : <Icons.Beaker />,
+            color: 'var(--secondary)',
             onDelete: () => deleteOutputEntry(e.id),
         }));
 
@@ -39,8 +40,8 @@ export default function HistoryView({ data }) {
             title: 'Flush',
             detail: e.amountMl > 0 ? `${e.amountMl} ml${e.note ? ` • ${e.note}` : ''}` : 'Logged',
             timestamp: e.timestamp,
-            icon: '💉',
-            color: '#3b82f6',
+            icon: <Icons.Syringe />,
+            color: 'var(--success)',
             onDelete: () => deleteFlushEntry(e.id),
         }));
 
@@ -50,8 +51,8 @@ export default function HistoryView({ data }) {
             title: 'Bowel Movement',
             detail: e.bristolScale > 0 ? `Bristol ${e.bristolScale}${e.note ? ` • ${e.note}` : ''}` : 'Logged',
             timestamp: e.timestamp,
-            icon: '🚽',
-            color: '#f97316',
+            icon: <span style={{ fontSize: '20px' }}>🧻</span>, // Keep emoji for now or find better icon
+            color: 'var(--warning)',
             onDelete: () => deleteBowelEntry(e.id),
         }));
 
@@ -61,7 +62,7 @@ export default function HistoryView({ data }) {
             title: 'Dressing',
             detail: `${e.state}${e.note ? ` • ${e.note}` : ''}`,
             timestamp: e.timestamp,
-            icon: '🩹',
+            icon: <Icons.Bandage />,
             color: '#a855f7',
             onDelete: () => deleteDressingEntry(e.id),
         }));
@@ -77,10 +78,9 @@ export default function HistoryView({ data }) {
 
     return (
         <div className="page">
-            {/* Header */}
             <header className="screen-header">
                 <h1 className="screen-header__title">History</h1>
-                <p className="screen-header__subtitle">{filter}</p>
+                <p className="screen-header__subtitle">{filter} Entries</p>
             </header>
 
             <div className="page__content">
@@ -99,9 +99,11 @@ export default function HistoryView({ data }) {
 
                 {/* History List */}
                 {filteredItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-secondary)' }}>
-                        <div style={{ fontSize: '40px', marginBottom: '16px' }}>📭</div>
-                        <p>No entries found</p>
+                    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)' }}>
+                        <div style={{ opacity: 0.5, marginBottom: '16px' }}>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                        </div>
+                        <p>No history found</p>
                     </div>
                 ) : (
                     <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -109,11 +111,11 @@ export default function HistoryView({ data }) {
                             <div
                                 key={`${item.type}-${item.id}`}
                                 className="history-item"
-                                style={{ borderBottom: index < filteredItems.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
+                                style={{ borderBottom: index < filteredItems.length - 1 ? '1px solid var(--glass-border)' : 'none' }}
                             >
                                 <div
                                     className="history-item__icon"
-                                    style={{ backgroundColor: `${item.color}22`, color: item.color }}
+                                    style={{ backgroundColor: `rgba(255,255,255,0.05)`, color: item.color }}
                                 >
                                     {item.icon}
                                 </div>
@@ -123,8 +125,9 @@ export default function HistoryView({ data }) {
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div className="history-item__time">{formatTime(item.timestamp)}</div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatDate(item.timestamp)}</div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{formatDate(item.timestamp)}</div>
                                 </div>
+                                {/* Future: Add delete button here if needed */}
                             </div>
                         ))}
                     </div>

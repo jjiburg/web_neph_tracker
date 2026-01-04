@@ -6,11 +6,12 @@ import SummaryView from './views/SummaryView';
 import AuthScreen from './components/AuthScreen';
 import { useData, useToast } from './hooks';
 import { syncData } from './sync';
+import { Icons } from './components/Icons';
 
 const TABS = [
-    { id: 'log', label: 'Log', icon: '➕' },
-    { id: 'history', label: 'History', icon: '🕐' },
-    { id: 'summary', label: 'Summary', icon: '📊' },
+    { id: 'log', label: 'Log', icon: <Icons.Plus /> },
+    { id: 'history', label: 'History', icon: <Icons.Clock /> },
+    { id: 'summary', label: 'Summary', icon: <Icons.Chart /> },
 ];
 
 export default function App() {
@@ -93,13 +94,14 @@ export default function App() {
             <div className="liquid-background" />
 
             {/* Logout button */}
-            <div style={{ position: 'fixed', top: 'calc(var(--safe-top) + 12px)', right: '20px', zIndex: 1000 }}>
+            <div style={{ position: 'fixed', top: 'calc(var(--safe-top) + 20px)', right: '20px', zIndex: 1000 }}>
                 <button
                     onClick={() => { localStorage.clear(); window.location.reload(); }}
                     className="liquid-button--chip"
-                    style={{ fontSize: '11px', minHeight: '30px' }}
+                    style={{ minHeight: '36px', display: 'flex', gap: '6px', alignItems: 'center' }}
                 >
-                    Logout
+                    <Icons.LogOut />
+                    <span>Logout</span>
                 </button>
             </div>
 
@@ -122,9 +124,9 @@ export default function App() {
             <AnimatePresence mode="wait">
                 <motion.div
                     key={activeTab}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.2 }}
                     style={{ height: '100%' }}
                 >

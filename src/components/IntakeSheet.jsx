@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Icons } from './Icons';
 
 export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
     const [amountMl, setAmountMl] = useState('');
@@ -28,21 +29,28 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="sheet__handle" />
-                <h2 className="sheet__title">Log Intake</h2>
+                <div className="sheet__header">
+                    <span className="sheet__icon text-accent"><Icons.Drop /></span>
+                    <h2 className="sheet__title">Log Intake</h2>
+                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="sheet__content">
                     {/* Amount */}
                     <div className="input-group">
                         <label className="input-group__label">Amount (ml)</label>
-                        <input
-                            type="number"
-                            className="input"
-                            placeholder="0"
-                            value={amountMl}
-                            onChange={(e) => setAmountMl(e.target.value)}
-                            inputMode="numeric"
-                        />
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="number"
+                                className="input input--large"
+                                placeholder="0"
+                                value={amountMl}
+                                onChange={(e) => setAmountMl(e.target.value)}
+                                inputMode="numeric"
+                                autoFocus
+                            />
+                            <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', fontWeight: 600 }}>ml</span>
+                        </div>
+                        <div className="quick-grid">
                             {quickAmounts.map((amt) => (
                                 <button
                                     key={amt}
@@ -58,26 +66,30 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
                     {/* Time */}
                     <div className="input-group">
                         <label className="input-group__label">Time</label>
-                        <input
-                            type="datetime-local"
-                            className="input"
-                            value={timestamp}
-                            onChange={(e) => setTimestamp(e.target.value)}
-                            style={{ fontSize: '16px' }}
-                        />
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Clock /></span>
+                            <input
+                                type="datetime-local"
+                                className="input"
+                                value={timestamp}
+                                onChange={(e) => setTimestamp(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     {/* Note */}
                     <div className="input-group">
                         <label className="input-group__label">Notes (optional)</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder="Add a note..."
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            style={{ fontSize: '16px' }}
-                        />
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Paperclip /></span>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Add a note..."
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     {/* Save */}
@@ -85,7 +97,7 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
                         className="liquid-button"
                         onClick={handleSave}
                         disabled={!amountMl || parseFloat(amountMl) <= 0}
-                        style={{ opacity: !amountMl || parseFloat(amountMl) <= 0 ? 0.5 : 1 }}
+                        style={{ marginTop: '8px' }}
                     >
                         Save Entry
                     </button>

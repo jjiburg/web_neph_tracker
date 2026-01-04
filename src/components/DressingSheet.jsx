@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Icons } from './Icons';
 
 const DRESSING_STATES = ['Checked', 'Needs Changing', 'Changed Today'];
 
@@ -29,9 +30,12 @@ export default function DressingSheet({ onSave, onClose }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="sheet__handle" />
-                <h2 className="sheet__title">Dressing Check</h2>
+                <div className="sheet__header">
+                    <span className="sheet__icon" style={{ color: '#a855f7' }}><Icons.Bandage /></span>
+                    <h2 className="sheet__title">Dressing Check</h2>
+                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="sheet__content">
                     {/* Status */}
                     <div className="input-group">
                         <label className="input-group__label">Status</label>
@@ -41,7 +45,7 @@ export default function DressingSheet({ onSave, onClose }) {
                                     key={s}
                                     className={`liquid-button--chip ${state === s ? 'active' : ''}`}
                                     onClick={() => setState(s)}
-                                    style={{ justifyContent: 'flex-start' }}
+                                    style={{ justifyContent: 'flex-start', padding: '12px 16px' }}
                                 >
                                     {s}
                                 </button>
@@ -51,24 +55,26 @@ export default function DressingSheet({ onSave, onClose }) {
 
                     {/* Note */}
                     <div className="input-group">
-                        <label className="input-group__label">Notes (optional)</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder="Add a note..."
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            style={{ fontSize: '16px' }}
-                        />
+                        <label className="input-group__label">Notes</label>
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Paperclip /></span>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Add a note..."
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     {/* Save */}
                     <button
                         className="liquid-button"
                         onClick={handleSave}
-                        style={{ background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.5) 0%, rgba(168, 85, 247, 0.15) 100%)', borderColor: 'rgba(168, 85, 247, 0.4)', boxShadow: '0 8px 24px rgba(168, 85, 247, 0.3)' }}
+                        style={{ marginTop: '8px', background: '#a855f7', boxShadow: '0 8px 24px -4px rgba(168, 85, 247, 0.4)' }}
                     >
-                        Save
+                        Save Check
                     </button>
                 </div>
             </motion.div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Icons } from './Icons';
 
 export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
     const [amountMl, setAmountMl] = useState('');
@@ -34,21 +35,28 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="sheet__handle" />
-                <h2 className="sheet__title">Log {type === 'bag' ? 'Bag' : 'Voided'}</h2>
+                <div className="sheet__header">
+                    <span className="sheet__icon" style={{ color: 'var(--secondary)' }}><Icons.Beaker /></span>
+                    <h2 className="sheet__title">Log {type === 'bag' ? 'Bag' : 'Voided'}</h2>
+                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="sheet__content">
                     {/* Amount */}
                     <div className="input-group">
                         <label className="input-group__label">Amount (ml)</label>
-                        <input
-                            type="number"
-                            className="input"
-                            placeholder="0"
-                            value={amountMl}
-                            onChange={(e) => setAmountMl(e.target.value)}
-                            inputMode="numeric"
-                        />
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="number"
+                                className="input input--large"
+                                placeholder="0"
+                                value={amountMl}
+                                onChange={(e) => setAmountMl(e.target.value)}
+                                inputMode="numeric"
+                                autoFocus
+                            />
+                            <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', fontWeight: 600 }}>ml</span>
+                        </div>
+                        <div className="quick-grid">
                             {quickAmounts.map((amt) => (
                                 <button
                                     key={amt}
@@ -63,7 +71,7 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
 
                     {/* Symptoms */}
                     <div className="glass-card glass-card--compact">
-                        <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Symptoms</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>SYMPTOMS</div>
                         {['clots', 'pain', 'leakage', 'fever'].map((symptom) => (
                             <div className="toggle-row" key={symptom}>
                                 <span className="toggle-row__label" style={{ textTransform: 'capitalize' }}>{symptom}</span>
@@ -79,27 +87,27 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
 
                     {/* Color/Notes */}
                     <div className="input-group">
-                        <label className="input-group__label">Color (e.g. Amber)</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder="Color..."
-                            value={colorNote}
-                            onChange={(e) => setColorNote(e.target.value)}
-                            style={{ fontSize: '16px' }}
-                        />
-                    </div>
-
-                    <div className="input-group">
-                        <label className="input-group__label">Other Notes</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder="Details..."
-                            value={otherNote}
-                            onChange={(e) => setOtherNote(e.target.value)}
-                            style={{ fontSize: '16px' }}
-                        />
+                        <label className="input-group__label">Details</label>
+                        <div className="input-wrapper" style={{ marginBottom: '12px' }}>
+                            <span className="input-icon" style={{ fontSize: '16px' }}>🎨</span>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Color (e.g. Amber, Clear)"
+                                value={colorNote}
+                                onChange={(e) => setColorNote(e.target.value)}
+                            />
+                        </div>
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Paperclip /></span>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Other notes..."
+                                value={otherNote}
+                                onChange={(e) => setOtherNote(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     {/* Save */}
@@ -107,7 +115,7 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
                         className="liquid-button liquid-button--secondary"
                         onClick={handleSave}
                         disabled={!amountMl || parseFloat(amountMl) <= 0}
-                        style={{ opacity: !amountMl || parseFloat(amountMl) <= 0 ? 0.5 : 1 }}
+                        style={{ marginTop: '8px' }}
                     >
                         Save Entry
                     </button>
