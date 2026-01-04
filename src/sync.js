@@ -33,7 +33,8 @@ export async function syncData(passphrase, token) {
             }));
 
             // Push to server (outside of any transaction)
-            const resp = await fetch(`${API_BASE}/sync/push`, {
+            console.log('[SYNC] Pushing', encryptedEntries.length, 'entries for', storeName);
+            const resp = await fetch(`${API_BASE}/api/sync/push`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -60,7 +61,8 @@ export async function syncData(passphrase, token) {
     // 2. PULL remote changes
     const lastSync = localStorage.getItem('lastSyncTime') || 0;
     try {
-        const resp = await fetch(`${API_BASE}/sync/pull?lastSync=${lastSync}`, {
+        console.log('[SYNC] Pulling remote changes since', lastSync);
+        const resp = await fetch(`${API_BASE}/api/sync/pull?lastSync=${lastSync}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
