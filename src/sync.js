@@ -12,26 +12,28 @@ export async function syncData(passphrase, token) {
 
     // 1. PUSH local changes
     for (const storeName of stores) {
-        const tx = db.transaction(storeName, 'readwrite');
-        const store = tx.objectStore(storeName);
-        const entries = await store.getAll();
-
-        const unsynced = entries.filter(e => !e.synced);
-        if (unsynced.length === 0) continue;
-
-        const encryptedEntries = await Promise.all(unsynced.map(async (e) => {
-            // Remove local metadata before encrypting
-            const { id, synced, type, timestamp, ...data } = e;
-            const blob = await encryptData(data, passphrase);
-            return {
-                id: id.toString().includes('-') ? id : window.crypto.randomUUID(), // Ensure UUID for server
-                type: type || storeName,
-                encrypted_blob: blob,
-                timestamp: timestamp || (e.date ? new Date(e.date).getTime() : Date.now())
-            };
-        }));
-
         try {
+            // First, get all unsynced entries in one transaction
+            const tx1 = db.transaction(storeName, 'readonly');
+            const entries = await tx1.objectStore(storeName).getAll();
+            await tx1.done;
+
+            const unsynced = entries.filter(e => !e.synced);
+            if (unsynced.length === 0) continue;
+
+            // Encrypt entries (outside of any transaction)
+            const encryptedEntries = await Promise.all(unsynced.map(async (e) => {
+                const { id, synced, type, timestamp, ...data } = e;
+                const blob = await encryptData(data, passphrase);
+                return {
+                    id: id.toString().includes('-') ? id : window.crypto.randomUUID(),
+                    type: type || storeName,
+                    encrypted_blob: blob,
+                    timestamp: timestamp || (e.date ? new Date(e.date).getTime() : Date.now())
+                };
+            }));
+
+            // Push to server (outside of any transaction)
             const resp = await fetch(`${API_BASE}/sync/push`, {
                 method: 'POST',
                 headers: {
@@ -42,11 +44,14 @@ export async function syncData(passphrase, token) {
             });
 
             if (resp.ok) {
-                // Mark as synced locally
+                // Mark as synced in a NEW transaction
+                const tx2 = db.transaction(storeName, 'readwrite');
+                const store2 = tx2.objectStore(storeName);
                 for (const e of unsynced) {
                     e.synced = true;
-                    await store.put(e);
+                    store2.put(e);
                 }
+                await tx2.done;
             }
         } catch (e) {
             console.error(`Sync push failed for ${storeName}`, e);
@@ -63,23 +68,31 @@ export async function syncData(passphrase, token) {
         if (resp.ok) {
             const { entries } = await resp.json();
             for (const entry of entries) {
-                const decrypted = await decryptData(entry.encrypted_blob, passphrase);
-                if (decrypted) {
-                    const storeName = entry.type === 'bag' || entry.type === 'urinal' ? 'output' : entry.type;
-                    const tx = db.transaction(storeName, 'readwrite');
-                    const store = tx.objectStore(storeName);
+                try {
+                    const decrypted = await decryptData(entry.encrypted_blob, passphrase);
+                    if (decrypted) {
+                        const storeName = entry.type === 'bag' || entry.type === 'urinal' ? 'output' : entry.type;
 
-                    // Check if it already exists by ID
-                    const existing = await store.get(entry.id);
-                    if (!existing) {
-                        await store.put({
-                            ...decrypted,
-                            id: entry.id,
-                            type: entry.type,
-                            timestamp: new Date(entry.timestamp).getTime(),
-                            synced: true
-                        });
+                        // Check if exists in one transaction
+                        const tx1 = db.transaction(storeName, 'readonly');
+                        const existing = await tx1.objectStore(storeName).get(entry.id);
+                        await tx1.done;
+
+                        // If not exists, add in a new transaction
+                        if (!existing) {
+                            const tx2 = db.transaction(storeName, 'readwrite');
+                            tx2.objectStore(storeName).put({
+                                ...decrypted,
+                                id: entry.id,
+                                type: entry.type,
+                                timestamp: new Date(entry.timestamp).getTime(),
+                                synced: true
+                            });
+                            await tx2.done;
+                        }
                     }
+                } catch (e) {
+                    console.error(`Failed to process entry ${entry.id}`, e);
                 }
             }
             localStorage.setItem('lastSyncTime', Date.now());
