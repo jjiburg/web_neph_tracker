@@ -7,6 +7,7 @@ A nephrostomy care tracking app built with React and Capacitor, featuring an iOS
 - Daily summaries with "End of Day" recording
 - Offline-first with IndexedDB persistence
 - Native iOS app via Capacitor
+- Voice input for hands-free logging
 
 ## Tech Stack
 - **React** (Vite)
@@ -16,6 +17,7 @@ A nephrostomy care tracking app built with React and Capacitor, featuring an iOS
 - **PostgreSQL** for cloud storage
 - **Web Crypto API** for AES-GCM 256 E2E Encryption
 - **Framer Motion** for animations
+- **Gemini Flash 2.5** for voice command parsing
 
 ## Development
 
@@ -29,25 +31,51 @@ npm run dev
 # Build for production
 npm run build
 
-# Add iOS platform
-npm run cap:add:ios
-
 # Sync web build to iOS
-npm run cap:sync
+npx cap sync ios
 
 # Open Xcode project
-npm run cap:open:ios
+npx cap open ios
 ```
 
 ## Deployment (Railway)
 
-The app is optimized for deployment on Railway:
+**Production URL**: `https://output-tracker-production.up.railway.app`
+
+The app is deployed on Railway:
 1. Connect your GitHub repository to Railway.
 2. Add a **PostgreSQL** database to your project.
 3. Railway will automatically detect the `start` script and build/run the project.
 4. Set the following Environment Variables in Railway:
    - `DATABASE_URL`: (Automatically provided by Railway)
    - `JWT_SECRET`: Any random string for auth tokens.
+   - `GEMINI_API_KEY`: Your Google Gemini API key for voice input.
+
+## Voice Input Feature
+
+The app includes a voice command feature using Gemini Flash 2.5:
+- **Floating mic button** on QuickLogView with Voice Activity Detection (VAD)
+- **Auto-stop recording** after 1.5 seconds of silence
+- **Natural language parsing** for commands like:
+  - "add 300ml hydration" → logs intake
+  - "log 500ml bag output" → logs bag output
+  - "natural output 200ml" → logs void output
+  - "did a flush" → logs 30ml flush
+  - "bowel movement type 4" → logs bowel
+
+Backend: `server/gemini.js` → `/api/voice` endpoint
+
+## Capacitor iOS
+
+The iOS app is generated via Capacitor:
+- **Project location**: `ios/App/App.xcworkspace` (open this in Xcode)
+- **API configuration**: `src/config.js` detects native platform and uses production API
+- **CORS**: Server configured to accept `capacitor://localhost` origin
+
+**Important for Capacitor:**
+- All API calls use `API_BASE` from `src/config.js`
+- On web: `API_BASE = ''` (relative paths)
+- On native: `API_BASE = 'https://output-tracker-production.up.railway.app'`
 
 ## End-to-End Encryption (E2E)
 
@@ -63,24 +91,31 @@ src/
 ├── main.jsx          # Entry point
 ├── App.jsx           # Root component with tab navigation
 ├── index.css         # Liquid Glass design system (Global Styles)
+├── config.js         # API configuration (Capacitor detection)
 ├── store.js          # IndexedDB data layer
 ├── hooks.js          # React hooks for data management
 ├── import.js         # JSON backup import utility
 ├── encryption.js     # E2E encryption logic
 ├── sync.js           # Cloud synchronization service
 ├── views/
-│   ├── QuickLogView.jsx
-│   ├── HistoryView.jsx
-│   └── SummaryView.jsx
+│   ├── QuickLogView.jsx   # Main logging UI with voice button
+│   ├── HistoryView.jsx    # Log history with filters
+│   └── SummaryView.jsx    # Daily totals and diagnostics
 └── components/
-    ├── AuthScreen.jsx
-    ├── Icons.jsx     # Centralized SVG icon definitions
+    ├── AuthScreen.jsx     # Login/register
+    ├── Icons.jsx          # Centralized SVG icons
+    ├── VoiceButton.jsx    # Voice input with VAD
+    ├── DiagnosticsPanel.jsx # Network diagnostics
     ├── ImportSheet.jsx
     ├── IntakeSheet.jsx
     ├── OutputSheet.jsx
     ├── FlushSheet.jsx
     ├── BowelSheet.jsx
     └── DressingSheet.jsx
+
+server/
+├── index.js          # Express server with CORS, auth, sync
+└── gemini.js         # Gemini voice API endpoint
 ```
 
 ## Design System
@@ -88,16 +123,24 @@ The app implements iOS 26 "Liquid Glass" aesthetics:
 - **Glassmorphism**: `glass-card` classes with `backdrop-filter: blur(20px)`, `rgba(255,255,255,0.06)` backgrounds, and `1px solid rgba(255,255,255,0.1)` borders.
 - **Typography**: Inter font, utilizing `text-dim` and `text-accent` utility classes.
 - **Interactive Elements**: `liquid-button` with spring physics and gradient backgrounds.
-- **Iconography**: Centralized SVG icons via `Icons.jsx` replacing legacy emojis.
+- **Iconography**: Centralized SVG icons via `Icons.jsx`.
 - **Animation**: `Framer Motion` for sheet transitions and page enters (`AnimatePresence`).
 
 ## Data Model
 - **IntakeEntry**: amountMl, timestamp, note
-- **OutputEntry**: type (bag/urinal), amountMl, symptoms, colorNote, timestamp
+- **OutputEntry**: type (bag/void), amountMl, symptoms, colorNote, timestamp
 - **FlushEntry**: amountMl, timestamp, note
 - **BowelEntry**: bristolScale, timestamp, note
 - **DressingEntry**: state, timestamp, note
 - **DailyTotal**: date, bagMl, urinalMl, totalMl, intakeMl
+
+## API Endpoints
+- `GET /api/health` - Health check for diagnostics
+- `POST /api/register` - Create new user
+- `POST /api/login` - Authenticate user
+- `POST /api/sync/push` - Push encrypted entries (requires auth)
+- `GET /api/sync/pull` - Pull encrypted entries (requires auth)
+- `POST /api/voice` - Voice command parsing via Gemini
 
 ---
 
