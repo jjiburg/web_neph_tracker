@@ -5,7 +5,6 @@ import { Icons } from '../components/Icons';
 export default function HistoryView({ data }) {
     const [filter, setFilter] = useState('All');
 
-    // Combine all data streams into one flat list
     const entries = useMemo(() => {
         return [
             ...data.intakes.map(e => ({ ...e, storeName: 'intake' })),
@@ -18,12 +17,7 @@ export default function HistoryView({ data }) {
 
     const filteredEntries = useMemo(() => {
         if (filter === 'All') return entries;
-        if (filter === 'Intake') return entries.filter(e => e.storeName === 'intake');
-        if (filter === 'Output') return entries.filter(e => e.storeName === 'output');
-        if (filter === 'Flush') return entries.filter(e => e.storeName === 'flush');
-        if (filter === 'Bowel') return entries.filter(e => e.storeName === 'bowel');
-        if (filter === 'Dressing') return entries.filter(e => e.storeName === 'dressing');
-        return entries;
+        return entries.filter(e => e.storeName.toLowerCase() === filter.toLowerCase());
     }, [entries, filter]);
 
     const getIcon = (type) => {
@@ -31,7 +25,7 @@ export default function HistoryView({ data }) {
             case 'intake': return <Icons.Drop size={20} color="var(--primary)" />;
             case 'output': return <Icons.Beaker size={20} color="var(--secondary)" />;
             case 'flush': return <Icons.Syringe size={20} color="var(--success)" />;
-            case 'bowel': return <span style={{ fontSize: '20px' }}>🧻</span>;
+            case 'bowel': return <span style={{ fontSize: 18 }}>🧻</span>;
             case 'dressing': return <Icons.Bandage size={20} color="#a855f7" />;
             default: return <Icons.Activity size={20} />;
         }
@@ -43,38 +37,38 @@ export default function HistoryView({ data }) {
     return (
         <div className="view-content">
             <header className="screen-header">
-                <h1 className="screen-header__title">History</h1>
-                <p className="screen-header__subtitle">
-                    {filteredEntries.length} {filteredEntries.length === 1 ? 'Entry' : 'Entries'}
-                </p>
+                <div>
+                    <h1 className="screen-header__title">History</h1>
+                    <p className="screen-header__subtitle">{filteredEntries.length} {filteredEntries.length === 1 ? 'Entry' : 'Entries'}</p>
+                </div>
             </header>
 
+            {/* Filter Chips */}
             <div className="filter-scroll">
                 {['All', 'Intake', 'Output', 'Flush', 'Bowel', 'Dressing'].map((f) => (
-                    <button
-                        key={f}
-                        className={`filter-chip ${filter === f ? 'active' : ''}`}
-                        onClick={() => setFilter(f)}
-                    >
+                    <button key={f} className={`filter-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
                         {f}
                     </button>
                 ))}
             </div>
 
+            {/* History List */}
             <div className="history-list">
                 <AnimatePresence initial={false}>
                     {filteredEntries.length === 0 ? (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-dim)' }}
-                        >
-                            <Icons.Clock size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+                        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-dim)' }}>
+                            <Icons.Clock size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
                             <p>No records found</p>
-                        </motion.div>
+                        </div>
                     ) : (
                         filteredEntries.map((entry) => (
-                            <div className="history-item" key={entry.id}>
+                            <motion.div
+                                key={entry.id}
+                                className="history-item"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                            >
                                 <div className="history-item__icon">
                                     {getIcon(entry.storeName)}
                                 </div>
@@ -87,21 +81,20 @@ export default function HistoryView({ data }) {
                                     <div className="history-item__subtitle">
                                         {entry.storeName.charAt(0).toUpperCase() + entry.storeName.slice(1)}
                                         {entry.type ? ` (${entry.type})` : ''}
-                                        {entry.note ? ` • ${entry.note}` : ''}
+                                        {entry.note ? ` · ${entry.note}` : ''}
                                     </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                     <div className="history-item__time">{formatTime(entry.timestamp)}</div>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{formatDate(entry.timestamp)}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{formatDate(entry.timestamp)}</div>
                                 </div>
-                            </div>
+                            </motion.div>
                         ))
                     )}
                 </AnimatePresence>
             </div>
 
-            {/* Bottom spacer for FAB/Tab bar */}
-            <div style={{ height: '80px' }} />
+            <div style={{ height: 80 }} />
         </div>
     );
 }
