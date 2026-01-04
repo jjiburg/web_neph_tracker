@@ -4,6 +4,18 @@ import { openDB } from 'idb';
 import { API_BASE } from './config';
 
 const STORES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
+const STORE_ALIASES = {
+    bag: 'output',
+    urinal: 'output',
+    outputs: 'output',
+    intakes: 'intake',
+    flushes: 'flush',
+    bowels: 'bowel',
+    dressings: 'dressing',
+    dailyTotal: 'dailyTotals',
+    daily_total: 'dailyTotals',
+    dailytotals: 'dailyTotals',
+};
 const SYNC_CURSOR_KEY = 'lastSyncCursor';
 const SYNC_STATUS_KEY = 'syncStatus';
 const PUSH_BATCH_SIZE = 200;
@@ -55,8 +67,9 @@ async function fetchWithRetry(url, options, { retries = MAX_RETRIES, timeoutMs =
 }
 
 function normalizeStoreName(type) {
-    if (type === 'bag' || type === 'urinal') return 'output';
-    return type;
+    if (!type) return null;
+    const normalized = STORE_ALIASES[type] || type;
+    return STORES.includes(normalized) ? normalized : null;
 }
 
 function getEntryTimestamp(entry) {
@@ -176,6 +189,13 @@ export async function syncData(passphrase, token) {
                     if (!decrypted) continue;
 
                     const storeName = normalizeStoreName(entry.type);
+                    if (!storeName) {
+                        saveSyncStatus({
+                            lastError: `Pull entry skipped (${entry.id}): unknown type ${entry.type}`,
+                            lastErrorAt: Date.now(),
+                        });
+                        continue;
+                    }
                     const tx = db.transaction(storeName, 'readonly');
                     const existing = await tx.objectStore(storeName).get(entry.id);
                     await tx.done;
