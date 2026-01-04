@@ -52,6 +52,9 @@ export async function importBackup(jsonString, replaceExisting = false) {
                     amountMl: item.amountMl,
                     note: item.note || '',
                     timestamp: new Date(item.timestamp).getTime(),
+                    updatedAt: new Date(item.timestamp).getTime(),
+                    deleted: false,
+                    deletedAt: null,
                     synced: false
                 });
                 counts.intakes++;
@@ -74,6 +77,9 @@ export async function importBackup(jsonString, replaceExisting = false) {
                     fever: item.fever || false,
                     otherNote: item.otherNote || '',
                     timestamp: new Date(item.timestamp).getTime(),
+                    updatedAt: new Date(item.timestamp).getTime(),
+                    deleted: false,
+                    deletedAt: null,
                     synced: false
                 });
                 counts.outputs++;
@@ -90,6 +96,9 @@ export async function importBackup(jsonString, replaceExisting = false) {
                     amountMl: item.amountMl || 30,
                     note: item.note || '',
                     timestamp: new Date(item.timestamp).getTime(),
+                    updatedAt: new Date(item.timestamp).getTime(),
+                    deleted: false,
+                    deletedAt: null,
                     synced: false
                 });
                 counts.flushes++;
@@ -106,6 +115,9 @@ export async function importBackup(jsonString, replaceExisting = false) {
                     bristolScale: item.bristolScale || 0,
                     note: item.note || '',
                     timestamp: new Date(item.timestamp).getTime(),
+                    updatedAt: new Date(item.timestamp).getTime(),
+                    deleted: false,
+                    deletedAt: null,
                     synced: false
                 });
                 counts.bowelMovements++;
@@ -122,6 +134,9 @@ export async function importBackup(jsonString, replaceExisting = false) {
                     state: item.stateRaw || 'Checked',
                     note: item.note || '',
                     timestamp: new Date(item.timestamp).getTime(),
+                    updatedAt: new Date(item.timestamp).getTime(),
+                    deleted: false,
+                    deletedAt: null,
                     synced: false
                 });
                 counts.dressings++;
@@ -141,6 +156,9 @@ export async function importBackup(jsonString, replaceExisting = false) {
                     urinalMl: item.urinalTotalMl || 0,
                     totalMl: item.totalOutputMl || 0,
                     intakeMl: item.intakeTotalMl || 0,
+                    updatedAt: new Date(item.day).getTime(),
+                    deleted: false,
+                    deletedAt: null,
                     synced: false
                 });
                 counts.dailyTotals++;

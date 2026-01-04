@@ -3,102 +3,235 @@ import { encryptData, decryptData } from './encryption';
 import { openDB } from 'idb';
 import { API_BASE } from './config';
 
+const STORES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
+const SYNC_CURSOR_KEY = 'lastSyncCursor';
+const SYNC_STATUS_KEY = 'syncStatus';
+const PUSH_BATCH_SIZE = 200;
+const PULL_LIMIT = 500;
+const REQUEST_TIMEOUT_MS = 10000;
+const MAX_RETRIES = 2;
+
+let syncInProgress = false;
+
+function loadSyncStatus() {
+    try {
+        return JSON.parse(localStorage.getItem(SYNC_STATUS_KEY)) || {};
+    } catch {
+        return {};
+    }
+}
+
+function saveSyncStatus(partial) {
+    const existing = loadSyncStatus();
+    const next = { ...existing, ...partial };
+    localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(next));
+    return next;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, options, { retries = MAX_RETRIES, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const resp = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeout);
+            if (!resp.ok && attempt < retries) {
+                const backoff = 300 * (2 ** attempt) + Math.floor(Math.random() * 200);
+                await sleep(backoff);
+                continue;
+            }
+            return resp;
+        } catch (err) {
+            clearTimeout(timeout);
+            if (attempt >= retries) throw err;
+            const backoff = 300 * (2 ** attempt) + Math.floor(Math.random() * 200);
+            await sleep(backoff);
+        }
+    }
+}
+
+function normalizeStoreName(type) {
+    if (type === 'bag' || type === 'urinal') return 'output';
+    return type;
+}
+
+function getEntryTimestamp(entry) {
+    if (entry.timestamp) return entry.timestamp;
+    if (entry.date) return new Date(entry.date).getTime();
+    return Date.now();
+}
+
+function getEntryUpdatedAt(entry) {
+    return entry.updatedAt || entry.timestamp || Date.now();
+}
+
+async function getUnsyncedEntries(db, storeName) {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const index = store.index('synced');
+    const entries = await index.getAll(false);
+    await tx.done;
+    return entries;
+}
+
+async function markEntriesSynced(db, storeName, entries, acceptedIds) {
+    const accepted = new Set(acceptedIds || []);
+    if (accepted.size === 0) return;
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    for (const entry of entries) {
+        if (!accepted.has(entry.id)) continue;
+        store.put({ ...entry, synced: true });
+    }
+    await tx.done;
+}
+
+export function getSyncStatus() {
+    return loadSyncStatus();
+}
+
 export async function syncData(passphrase, token) {
     if (!passphrase || !token) return;
+    if (syncInProgress) return;
+    syncInProgress = true;
+
+    const startedAt = Date.now();
+    saveSyncStatus({ lastSyncStart: startedAt, lastError: null, inProgress: true });
 
     const db = await openDB('nephtrack', 1);
-    const stores = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
 
     // 1. PUSH local changes
-    for (const storeName of stores) {
+    let totalPushed = 0;
+    let totalPending = 0;
+    for (const storeName of STORES) {
         try {
-            // First, get all unsynced entries in one transaction
-            const tx1 = db.transaction(storeName, 'readonly');
-            const entries = await tx1.objectStore(storeName).getAll();
-            await tx1.done;
-
-            const unsynced = entries.filter(e => !e.synced);
+            const unsynced = await getUnsyncedEntries(db, storeName);
+            totalPending += unsynced.length;
             if (unsynced.length === 0) continue;
 
-            // Encrypt entries (outside of any transaction)
-            const encryptedEntries = await Promise.all(unsynced.map(async (e) => {
-                const { id, synced, type, timestamp, ...data } = e;
-                const blob = await encryptData(data, passphrase);
-                return {
-                    id: id.toString().includes('-') ? id : window.crypto.randomUUID(),
-                    type: type || storeName,
-                    encrypted_blob: blob,
-                    timestamp: timestamp || (e.date ? new Date(e.date).getTime() : Date.now())
-                };
-            }));
+            for (let i = 0; i < unsynced.length; i += PUSH_BATCH_SIZE) {
+                const batch = unsynced.slice(i, i + PUSH_BATCH_SIZE);
+                const encryptedEntries = await Promise.all(batch.map(async (entry) => {
+                    const { id, synced, type, timestamp, updatedAt, deleted, deletedAt, ...data } = entry;
+                    const blob = await encryptData(data, passphrase);
+                    return {
+                        id: id,
+                        type: type || storeName,
+                        encrypted_blob: blob,
+                        timestamp: getEntryTimestamp(entry),
+                        client_updated_at: getEntryUpdatedAt(entry),
+                        deleted: Boolean(deleted),
+                        deleted_at: deletedAt || null,
+                    };
+                }));
 
-            // Push to server (outside of any transaction)
-            console.log('[SYNC] Pushing', encryptedEntries.length, 'entries for', storeName);
-            const resp = await fetch(`${API_BASE}/api/sync/push`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ entries: encryptedEntries })
-            });
+                const resp = await fetchWithRetry(`${API_BASE}/api/sync/push`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ entries: encryptedEntries }),
+                });
 
-            if (resp.ok) {
-                // Mark as synced in a NEW transaction
-                const tx2 = db.transaction(storeName, 'readwrite');
-                const store2 = tx2.objectStore(storeName);
-                for (const e of unsynced) {
-                    e.synced = true;
-                    store2.put(e);
+                if (!resp.ok) {
+                    throw new Error(`Push failed with status ${resp.status}`);
                 }
-                await tx2.done;
+
+                const payload = await resp.json();
+                await markEntriesSynced(db, storeName, batch, payload.acceptedIds);
+                totalPushed += payload.acceptedIds?.length || 0;
             }
-        } catch (e) {
-            console.error(`Sync push failed for ${storeName}`, e);
+        } catch (err) {
+            saveSyncStatus({
+                lastError: `Push failed for ${storeName}: ${err.message}`,
+                lastErrorAt: Date.now(),
+            });
         }
     }
 
     // 2. PULL remote changes
-    const lastSync = localStorage.getItem('lastSyncTime') || 0;
+    let cursor = Number(localStorage.getItem(SYNC_CURSOR_KEY) || 0);
+    let totalPulled = 0;
+    let lastServerTime = null;
     try {
-        console.log('[SYNC] Pulling remote changes since', lastSync);
-        const resp = await fetch(`${API_BASE}/api/sync/pull?lastSync=${lastSync}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        while (true) {
+            const resp = await fetchWithRetry(`${API_BASE}/api/sync/pull?since=${cursor}&limit=${PULL_LIMIT}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
 
-        if (resp.ok) {
-            const { entries } = await resp.json();
+            if (!resp.ok) {
+                throw new Error(`Pull failed with status ${resp.status}`);
+            }
+
+            const { entries, nextCursor, serverTime } = await resp.json();
+            lastServerTime = serverTime || lastServerTime;
+
             for (const entry of entries) {
                 try {
                     const decrypted = await decryptData(entry.encrypted_blob, passphrase);
-                    if (decrypted) {
-                        const storeName = entry.type === 'bag' || entry.type === 'urinal' ? 'output' : entry.type;
+                    if (!decrypted) continue;
 
-                        // Check if exists in one transaction
-                        const tx1 = db.transaction(storeName, 'readonly');
-                        const existing = await tx1.objectStore(storeName).get(entry.id);
-                        await tx1.done;
+                    const storeName = normalizeStoreName(entry.type);
+                    const tx = db.transaction(storeName, 'readonly');
+                    const existing = await tx.objectStore(storeName).get(entry.id);
+                    await tx.done;
 
-                        // If not exists, add in a new transaction
-                        if (!existing) {
-                            const tx2 = db.transaction(storeName, 'readwrite');
-                            tx2.objectStore(storeName).put({
-                                ...decrypted,
-                                id: entry.id,
-                                type: entry.type,
-                                timestamp: new Date(entry.timestamp).getTime(),
-                                synced: true
-                            });
-                            await tx2.done;
-                        }
-                    }
-                } catch (e) {
-                    console.error(`Failed to process entry ${entry.id}`, e);
+                    const incomingUpdatedAt = entry.client_updated_at || entry.updated_at || entry.timestamp;
+                    const shouldApply = !existing || !existing.updatedAt || incomingUpdatedAt >= existing.updatedAt;
+                    if (!shouldApply) continue;
+
+                    const record = {
+                        ...decrypted,
+                        id: entry.id,
+                        type: entry.type,
+                        timestamp: new Date(entry.timestamp).getTime(),
+                        updatedAt: incomingUpdatedAt,
+                        deleted: Boolean(entry.deleted),
+                        deletedAt: entry.deleted_at ? new Date(entry.deleted_at).getTime() : null,
+                        synced: true,
+                    };
+
+                    const txWrite = db.transaction(storeName, 'readwrite');
+                    txWrite.objectStore(storeName).put(record);
+                    await txWrite.done;
+                    totalPulled += 1;
+                } catch (err) {
+                    saveSyncStatus({
+                        lastError: `Pull entry failed (${entry.id}): ${err.message}`,
+                        lastErrorAt: Date.now(),
+                    });
                 }
             }
-            localStorage.setItem('lastSyncTime', Date.now());
+
+            const next = Number(nextCursor || cursor);
+            if (!entries || entries.length < PULL_LIMIT || next <= cursor) {
+                cursor = next;
+                break;
+            }
+            cursor = next;
         }
-    } catch (e) {
-        console.error('Sync pull failed', e);
+
+        localStorage.setItem(SYNC_CURSOR_KEY, String(cursor));
+    } catch (err) {
+        saveSyncStatus({
+            lastError: `Pull failed: ${err.message}`,
+            lastErrorAt: Date.now(),
+        });
+    } finally {
+        syncInProgress = false;
+        saveSyncStatus({
+            lastSyncEnd: Date.now(),
+            lastSyncDurationMs: Date.now() - startedAt,
+            lastPushed: totalPushed,
+            lastPulled: totalPulled,
+            pendingLocal: totalPending,
+            lastServerTime,
+            inProgress: false,
+        });
     }
 }

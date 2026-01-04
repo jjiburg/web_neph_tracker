@@ -39,11 +39,15 @@ function getDB() {
 async function addEntry(storeName, entry) {
     const db = await getDB();
     const id = window.crypto.randomUUID();
+    const now = Date.now();
     const record = {
         ...entry,
         id,
-        timestamp: entry.timestamp || Date.now(),
-        synced: false
+        timestamp: entry.timestamp || now,
+        updatedAt: now,
+        deleted: false,
+        deletedAt: null,
+        synced: false,
     };
     await db.add(storeName, record);
     return id;
@@ -51,7 +55,8 @@ async function addEntry(storeName, entry) {
 
 async function getAllEntries(storeName) {
     const db = await getDB();
-    return db.getAllFromIndex(storeName, 'timestamp');
+    const entries = await db.getAllFromIndex(storeName, 'timestamp');
+    return entries.filter((entry) => !entry.deleted);
 }
 
 async function updateEntry(storeName, entry) {
@@ -61,7 +66,16 @@ async function updateEntry(storeName, entry) {
 
 async function deleteEntry(storeName, id) {
     const db = await getDB();
-    return db.delete(storeName, id);
+    const entry = await db.get(storeName, id);
+    if (!entry) return;
+    const now = Date.now();
+    return db.put(storeName, {
+        ...entry,
+        deleted: true,
+        deletedAt: now,
+        updatedAt: now,
+        synced: false,
+    });
 }
 
 // Helper: Get entries for a specific day
@@ -146,6 +160,9 @@ export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) 
         existing.totalMl = bagMl + urinalMl;
         existing.intakeMl = intakeMl;
         existing.synced = false;
+        existing.updatedAt = Date.now();
+        existing.deleted = false;
+        existing.deletedAt = null;
         return db.put(STORES.DAILY_TOTALS, existing);
     } else {
         return db.add(STORES.DAILY_TOTALS, {
@@ -155,6 +172,9 @@ export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) 
             urinalMl,
             totalMl: bagMl + urinalMl,
             intakeMl,
+            updatedAt: Date.now(),
+            deleted: false,
+            deletedAt: null,
             synced: false,
         });
     }
@@ -163,7 +183,7 @@ export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) 
 export const getAllDailyTotals = async () => {
     const db = await getDB();
     const all = await db.getAll(STORES.DAILY_TOTALS);
-    return all.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return all.filter((entry) => !entry.deleted).sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 
 export const deleteDailyTotal = (id) => deleteEntry(STORES.DAILY_TOTALS, id);

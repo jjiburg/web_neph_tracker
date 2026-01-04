@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { runDiagnostics, API_BASE, isNative, platform } from '../config';
 
@@ -6,6 +6,16 @@ export default function DiagnosticsPanel({ onClose }) {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [syncStatus, setSyncStatus] = useState(null);
+
+    useEffect(() => {
+        try {
+            const status = JSON.parse(localStorage.getItem('syncStatus') || 'null');
+            setSyncStatus(status);
+        } catch {
+            setSyncStatus(null);
+        }
+    }, []);
 
     const handleRunDiagnostics = async () => {
         setLoading(true);
@@ -17,6 +27,15 @@ export default function DiagnosticsPanel({ onClose }) {
             setError(e.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const refreshSyncStatus = () => {
+        try {
+            const status = JSON.parse(localStorage.getItem('syncStatus') || 'null');
+            setSyncStatus(status);
+        } catch {
+            setSyncStatus(null);
         }
     };
 
@@ -62,6 +81,34 @@ export default function DiagnosticsPanel({ onClose }) {
                     >
                         {loading ? 'Running Tests...' : 'Run Connectivity Tests'}
                     </button>
+
+                    {/* Sync Status */}
+                    <div className="glass-card" style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <h3 style={{ fontSize: 14, color: 'var(--text-dim)' }}>Sync Status</h3>
+                            <button
+                                className="liquid-button--chip"
+                                onClick={refreshSyncStatus}
+                                style={{ minHeight: 28, fontSize: 11 }}
+                            >
+                                Refresh
+                            </button>
+                        </div>
+                        {syncStatus ? (
+                            <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6 }}>
+                                <div><strong>In Progress:</strong> {syncStatus.inProgress ? 'Yes' : 'No'}</div>
+                                <div><strong>Last Start:</strong> {syncStatus.lastSyncStart ? new Date(syncStatus.lastSyncStart).toLocaleString() : '-'}</div>
+                                <div><strong>Last End:</strong> {syncStatus.lastSyncEnd ? new Date(syncStatus.lastSyncEnd).toLocaleString() : '-'}</div>
+                                <div><strong>Pushed:</strong> {syncStatus.lastPushed ?? '-'}</div>
+                                <div><strong>Pulled:</strong> {syncStatus.lastPulled ?? '-'}</div>
+                                <div><strong>Pending:</strong> {syncStatus.pendingLocal ?? '-'}</div>
+                                <div><strong>Server Time:</strong> {syncStatus.lastServerTime ? new Date(syncStatus.lastServerTime).toLocaleString() : '-'}</div>
+                                <div><strong>Last Error:</strong> {syncStatus.lastError || '-'}</div>
+                            </div>
+                        ) : (
+                            <div className="text-dim" style={{ fontSize: 12 }}>No sync status recorded yet.</div>
+                        )}
+                    </div>
 
                     {/* Error */}
                     {error && (

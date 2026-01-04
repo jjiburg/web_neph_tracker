@@ -53,14 +53,20 @@ const initDB = async () => {
         password_hash TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE TABLE IF NOT EXISTS logs (
-        id UUID PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+      DROP TABLE IF EXISTS logs;
+      CREATE TABLE logs (
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        id UUID NOT NULL,
         type TEXT NOT NULL,
         encrypted_blob TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        client_updated_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        deleted BOOLEAN NOT NULL DEFAULT FALSE,
+        deleted_at TIMESTAMP,
+        PRIMARY KEY (user_id, id)
       );
+      CREATE INDEX IF NOT EXISTS logs_user_updated_idx ON logs (user_id, updated_at);
     `);
         console.log('Database initialized');
     } catch (err) {
@@ -117,16 +123,43 @@ app.post('/api/sync/push', authenticateToken, async (req, res) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
+            const acceptedIds = [];
+            const skippedIds = [];
             for (const entry of entries) {
-                await client.query(
-                    `INSERT INTO logs (id, user_id, type, encrypted_blob, created_at)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (id) DO UPDATE SET encrypted_blob = EXCLUDED.encrypted_blob, updated_at = CURRENT_TIMESTAMP`,
-                    [entry.id, req.user.id, entry.type, entry.encrypted_blob, new Date(entry.timestamp)]
+                const clientUpdatedAt = entry.client_updated_at || entry.updatedAt || entry.timestamp || Date.now();
+                const createdAt = entry.timestamp || Date.now();
+                const deletedAt = entry.deleted_at ? new Date(entry.deleted_at) : null;
+                const result = await client.query(
+                    `INSERT INTO logs (user_id, id, type, encrypted_blob, created_at, client_updated_at, deleted, deleted_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (user_id, id) DO UPDATE SET
+             type = EXCLUDED.type,
+             encrypted_blob = EXCLUDED.encrypted_blob,
+             client_updated_at = EXCLUDED.client_updated_at,
+             deleted = EXCLUDED.deleted,
+             deleted_at = EXCLUDED.deleted_at,
+             updated_at = CURRENT_TIMESTAMP
+           WHERE EXCLUDED.client_updated_at >= logs.client_updated_at
+           RETURNING id`,
+                    [
+                        req.user.id,
+                        entry.id,
+                        entry.type,
+                        entry.encrypted_blob,
+                        new Date(createdAt),
+                        new Date(clientUpdatedAt),
+                        Boolean(entry.deleted),
+                        deletedAt,
+                    ]
                 );
+                if (result.rowCount > 0) {
+                    acceptedIds.push(entry.id);
+                } else {
+                    skippedIds.push(entry.id);
+                }
             }
             await client.query('COMMIT');
-            res.json({ success: true });
+            res.json({ success: true, acceptedIds, skippedIds });
         } catch (err) {
             await client.query('ROLLBACK');
             throw err;
@@ -139,13 +172,22 @@ app.post('/api/sync/push', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/sync/pull', authenticateToken, async (req, res) => {
-    const { lastSync } = req.query;
+    const { since, limit } = req.query;
+    const limitValue = Math.min(parseInt(limit || '500', 10), 1000);
     try {
         const result = await pool.query(
-            'SELECT id, type, encrypted_blob, created_at as timestamp FROM logs WHERE user_id = $1 AND updated_at > $2',
-            [req.user.id, lastSync ? new Date(parseInt(lastSync)) : new Date(0)]
+            `SELECT id, type, encrypted_blob, created_at as timestamp, client_updated_at, updated_at, deleted, deleted_at
+       FROM logs
+       WHERE user_id = $1 AND updated_at > $2
+       ORDER BY updated_at ASC
+       LIMIT $3`,
+            [req.user.id, since ? new Date(parseInt(since, 10)) : new Date(0), limitValue]
         );
-        res.json({ entries: result.rows });
+        const maxUpdatedAt = result.rows.reduce((max, row) => {
+            const ts = new Date(row.updated_at).getTime();
+            return Math.max(max, ts);
+        }, since ? parseInt(since, 10) : 0);
+        res.json({ entries: result.rows, nextCursor: maxUpdatedAt, serverTime: Date.now() });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
