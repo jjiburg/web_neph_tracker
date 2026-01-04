@@ -76,6 +76,9 @@ The iOS app is generated via Capacitor:
 - All API calls use `API_BASE` from `src/config.js`
 - On web: `API_BASE = ''` (relative paths)
 - On native: `API_BASE = 'https://output-tracker-production.up.railway.app'`
+- When running `npx cap sync ios`, ensure your terminal uses UTF-8 to avoid CocoaPods errors:
+  - `export LANG=en_US.UTF-8`
+  - `export LC_ALL=en_US.UTF-8`
 
 ## End-to-End Encryption (E2E)
 
