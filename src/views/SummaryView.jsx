@@ -4,13 +4,14 @@ import { formatMl, formatDateFull } from '../store';
 import ImportSheet from '../components/ImportSheet';
 import DiagnosticsPanel from '../components/DiagnosticsPanel';
 import { Icons } from '../components/Icons';
-import { exportBackup } from '../import';
+import { exportBackup, exportSchemaDefinition } from '../import';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [showImport, setShowImport] = useState(false);
     const [showDiagnostics, setShowDiagnostics] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [exportingSchema, setExportingSchema] = useState(false);
     const { dailyTotals, getTotalsForDay, recordDailyTotal, refresh } = data;
 
     const dayTotals = getTotalsForDay(selectedDate);
@@ -46,6 +47,29 @@ export default function SummaryView({ data, showToast }) {
             showToast(`Export failed: ${e.message}`);
         } finally {
             setExporting(false);
+        }
+    };
+
+    const handleExportSchema = async () => {
+        setExportingSchema(true);
+        try {
+            const payload = exportSchemaDefinition();
+            const json = JSON.stringify(payload, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const stamp = new Date().toISOString().slice(0, 10);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `nephtrack-schema-${stamp}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Schema exported');
+        } catch (e) {
+            showToast(`Schema export failed: ${e.message}`);
+        } finally {
+            setExportingSchema(false);
         }
     };
 
@@ -173,6 +197,13 @@ export default function SummaryView({ data, showToast }) {
                             disabled={exporting}
                         >
                             {exporting ? 'Exporting...' : 'Export JSON Backup'}
+                        </button>
+                        <button
+                            className="liquid-button liquid-button--secondary"
+                            onClick={handleExportSchema}
+                            disabled={exportingSchema}
+                        >
+                            {exportingSchema ? 'Exporting...' : 'Export Schema JSON'}
                         </button>
                     </div>
                 </div>

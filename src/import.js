@@ -30,6 +30,84 @@ export async function exportBackup() {
     return payload;
 }
 
+export function exportSchemaDefinition() {
+    return {
+        schemaVersion: 2,
+        title: 'NephTrack JSON Export Schema',
+        exportedAt: new Date().toISOString(),
+        data: {
+            intake: [{
+                id: 'uuid',
+                amountMl: 0,
+                note: '',
+                timestamp: 0,
+                updatedAt: 0,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            }],
+            output: [{
+                id: 'uuid',
+                type: 'bag',
+                amountMl: 0,
+                colorNote: '',
+                clots: false,
+                pain: false,
+                leakage: false,
+                fever: false,
+                otherNote: '',
+                timestamp: 0,
+                updatedAt: 0,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            }],
+            flush: [{
+                id: 'uuid',
+                amountMl: 0,
+                note: '',
+                timestamp: 0,
+                updatedAt: 0,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            }],
+            bowel: [{
+                id: 'uuid',
+                bristolScale: 0,
+                note: '',
+                timestamp: 0,
+                updatedAt: 0,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            }],
+            dressing: [{
+                id: 'uuid',
+                state: 'Checked',
+                note: '',
+                timestamp: 0,
+                updatedAt: 0,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            }],
+            dailyTotals: [{
+                id: 'uuid',
+                date: 'YYYY-MM-DD',
+                bagMl: 0,
+                urinalMl: 0,
+                totalMl: 0,
+                intakeMl: 0,
+                updatedAt: 0,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            }],
+        },
+    };
+}
+
 export async function clearLocalData() {
     const db = await getDB();
     await clearAllStores(db);
