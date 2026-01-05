@@ -15,6 +15,12 @@ const STORES = {
 
 let dbPromise = null;
 
+function notifyChange() {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('nephtrack-local-change'));
+    }
+}
+
 function getDB() {
     if (!dbPromise) {
         dbPromise = openDB(DB_NAME, DB_VERSION, {
@@ -50,6 +56,7 @@ async function addEntry(storeName, entry) {
         synced: false,
     };
     await db.add(storeName, record);
+    notifyChange();
     return id;
 }
 
@@ -61,7 +68,9 @@ async function getAllEntries(storeName) {
 
 async function updateEntry(storeName, entry) {
     const db = await getDB();
-    return db.put(storeName, entry);
+    const result = await db.put(storeName, entry);
+    notifyChange();
+    return result;
 }
 
 async function deleteEntry(storeName, id) {
@@ -69,13 +78,15 @@ async function deleteEntry(storeName, id) {
     const entry = await db.get(storeName, id);
     if (!entry) return;
     const now = Date.now();
-    return db.put(storeName, {
+    const result = await db.put(storeName, {
         ...entry,
         deleted: true,
         deletedAt: now,
         updatedAt: now,
         synced: false,
     });
+    notifyChange();
+    return result;
 }
 
 // Helper: Get entries for a specific day
@@ -163,9 +174,11 @@ export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) 
         existing.updatedAt = Date.now();
         existing.deleted = false;
         existing.deletedAt = null;
-        return db.put(STORES.DAILY_TOTALS, existing);
+        const result = await db.put(STORES.DAILY_TOTALS, existing);
+        notifyChange();
+        return result;
     } else {
-        return db.add(STORES.DAILY_TOTALS, {
+        const result = await db.add(STORES.DAILY_TOTALS, {
             id: window.crypto.randomUUID(),
             date: dateStr,
             bagMl,
@@ -177,6 +190,8 @@ export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) 
             deletedAt: null,
             synced: false,
         });
+        notifyChange();
+        return result;
     }
 };
 

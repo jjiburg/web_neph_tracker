@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import QuickLogView from './views/QuickLogView';
 import HistoryView from './views/HistoryView';
@@ -16,11 +16,15 @@ const TABS = [
     { id: 'summary', label: 'Summary', icon: <Icons.Chart /> },
 ];
 
+const SYNC_INTERVAL_MS = 10000;
+const LOCAL_CHANGE_DEBOUNCE_MS = 600;
+
 export default function App() {
     const [activeTab, setActiveTab] = useState('log');
     const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
     const [passphrase, setPassphrase] = useState(() => localStorage.getItem('passphrase') || '');
     const [showAuth, setShowAuth] = useState(!user || !passphrase);
+    const syncTimeoutRef = useRef(null);
 
     const data = useData();
     const { toast, showToast } = useToast();
@@ -35,11 +39,37 @@ export default function App() {
         })();
 
         if (user?.token && passphrase) {
-            const interval = setInterval(() => {
-                syncData(passphrase, user.token).then(data.refresh);
-            }, 30000);
-            syncData(passphrase, user.token).then(data.refresh);
-            return () => clearInterval(interval);
+            const runSync = () => syncData(passphrase, user.token).then(data.refresh);
+
+            const scheduleSync = () => {
+                if (syncTimeoutRef.current) {
+                    clearTimeout(syncTimeoutRef.current);
+                }
+                syncTimeoutRef.current = setTimeout(runSync, LOCAL_CHANGE_DEBOUNCE_MS);
+            };
+
+            const handleLocalChange = () => scheduleSync();
+            const handleVisibility = () => {
+                if (document.visibilityState === 'visible') runSync();
+            };
+            const handleOnline = () => runSync();
+
+            const interval = setInterval(runSync, SYNC_INTERVAL_MS);
+            runSync();
+
+            window.addEventListener('nephtrack-local-change', handleLocalChange);
+            document.addEventListener('visibilitychange', handleVisibility);
+            window.addEventListener('online', handleOnline);
+
+            return () => {
+                clearInterval(interval);
+                if (syncTimeoutRef.current) {
+                    clearTimeout(syncTimeoutRef.current);
+                }
+                window.removeEventListener('nephtrack-local-change', handleLocalChange);
+                document.removeEventListener('visibilitychange', handleVisibility);
+                window.removeEventListener('online', handleOnline);
+            };
         }
     }, [user, passphrase, data.refresh]);
 
