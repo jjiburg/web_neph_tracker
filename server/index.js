@@ -53,8 +53,7 @@ const initDB = async () => {
         password_hash TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-      DROP TABLE IF EXISTS logs;
-      CREATE TABLE logs (
+      CREATE TABLE IF NOT EXISTS logs (
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         id UUID NOT NULL,
         type TEXT NOT NULL,
@@ -66,7 +65,13 @@ const initDB = async () => {
         deleted_at TIMESTAMP,
         PRIMARY KEY (user_id, id)
       );
+      ALTER TABLE logs ADD COLUMN IF NOT EXISTS client_updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE logs ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE logs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+      ALTER TABLE logs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
       CREATE INDEX IF NOT EXISTS logs_user_updated_idx ON logs (user_id, updated_at);
+      CREATE INDEX IF NOT EXISTS logs_user_updated_id_idx ON logs (user_id, updated_at, id);
     `);
         console.log('Database initialized');
     } catch (err) {
@@ -181,22 +186,25 @@ app.post('/api/sync/clear', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/sync/pull', authenticateToken, async (req, res) => {
-    const { since, limit } = req.query;
+    const { since, sinceTs, sinceId, limit } = req.query;
     const limitValue = Math.min(parseInt(limit || '500', 10), 1000);
+    const sinceValue = sinceTs || since || 0;
+    const sinceDate = sinceValue ? new Date(parseInt(sinceValue, 10)) : new Date(0);
+    const sinceIdValue = sinceId || '00000000-0000-0000-0000-000000000000';
     try {
         const result = await pool.query(
             `SELECT id, type, encrypted_blob, created_at as timestamp, client_updated_at, updated_at, deleted, deleted_at
        FROM logs
-       WHERE user_id = $1 AND updated_at > $2
-       ORDER BY updated_at ASC
-       LIMIT $3`,
-            [req.user.id, since ? new Date(parseInt(since, 10)) : new Date(0), limitValue]
+       WHERE user_id = $1 AND (updated_at, id) > ($2, $3)
+       ORDER BY updated_at ASC, id ASC
+       LIMIT $4`,
+            [req.user.id, sinceDate, sinceIdValue, limitValue]
         );
-        const maxUpdatedAt = result.rows.reduce((max, row) => {
-            const ts = new Date(row.updated_at).getTime();
-            return Math.max(max, ts);
-        }, since ? parseInt(since, 10) : 0);
-        res.json({ entries: result.rows, nextCursor: maxUpdatedAt, serverTime: Date.now() });
+        const lastRow = result.rows[result.rows.length - 1];
+        const nextCursor = lastRow
+            ? { ts: new Date(lastRow.updated_at).getTime(), id: lastRow.id }
+            : { ts: sinceDate.getTime(), id: sinceIdValue };
+        res.json({ entries: result.rows, nextCursor, serverTime: Date.now() });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -183,12 +183,27 @@ export async function syncData(passphrase, token) {
     }
 
     // 2. PULL remote changes
-    let cursor = Number(localStorage.getItem(SYNC_CURSOR_KEY) || 0);
+    let cursor = { ts: 0, id: '00000000-0000-0000-0000-000000000000' };
+    try {
+        const stored = localStorage.getItem(SYNC_CURSOR_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (typeof parsed === 'number') {
+                cursor.ts = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+                cursor.ts = parsed.ts || 0;
+                cursor.id = parsed.id || cursor.id;
+            }
+        }
+    } catch {
+        cursor = { ts: 0, id: '00000000-0000-0000-0000-000000000000' };
+    }
     let totalPulled = 0;
     let lastServerTime = null;
+    let hadDecryptError = false;
     try {
         while (true) {
-            const resp = await fetchWithRetry(`${API_BASE}/api/sync/pull?since=${cursor}&limit=${PULL_LIMIT}`, {
+            const resp = await fetchWithRetry(`${API_BASE}/api/sync/pull?sinceTs=${cursor.ts}&sinceId=${cursor.id}&limit=${PULL_LIMIT}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
 
@@ -240,6 +255,7 @@ export async function syncData(passphrase, token) {
                     await txWrite.done;
                     totalPulled += 1;
                 } catch (err) {
+                    hadDecryptError = true;
                     saveSyncStatus({
                         lastError: `Pull entry failed (${entry.id}): ${err.message}`,
                         lastErrorAt: Date.now(),
@@ -247,15 +263,19 @@ export async function syncData(passphrase, token) {
                 }
             }
 
-            const next = Number(nextCursor || cursor);
-            if (!entries || entries.length < PULL_LIMIT || next <= cursor) {
-                cursor = next;
+            const next = nextCursor || cursor;
+            const nextTs = Number(next?.ts || cursor.ts);
+            const nextId = next?.id || cursor.id;
+            if (!entries || entries.length < PULL_LIMIT || (nextTs === cursor.ts && nextId === cursor.id)) {
+                cursor = { ts: nextTs, id: nextId };
                 break;
             }
-            cursor = next;
+            cursor = { ts: nextTs, id: nextId };
         }
 
-        localStorage.setItem(SYNC_CURSOR_KEY, String(cursor));
+        if (!hadDecryptError) {
+            localStorage.setItem(SYNC_CURSOR_KEY, JSON.stringify(cursor));
+        }
     } catch (err) {
         saveSyncStatus({
             lastError: `Pull failed: ${err.message}`,
