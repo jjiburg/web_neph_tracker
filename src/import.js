@@ -9,6 +9,39 @@ import { openDB } from 'idb';
 const DB_NAME = 'nephtrack';
 const DB_VERSION = 1;
 const STORE_NAMES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
+const COMMON_FIELDS = ['id', 'timestamp', 'updatedAt', 'deleted', 'deletedAt', 'synced'];
+const STORE_FIELDS = {
+    intake: ['amountMl', 'note'],
+    output: ['type', 'amountMl', 'colorNote', 'clots', 'pain', 'leakage', 'fever', 'otherNote'],
+    flush: ['amountMl', 'note'],
+    bowel: ['bristolScale', 'note'],
+    dressing: ['state', 'note'],
+    dailyTotals: ['date', 'bagMl', 'urinalMl', 'totalMl', 'intakeMl'],
+};
+const DEFAULT_VALUES = {
+    id: 'uuid',
+    timestamp: 0,
+    updatedAt: 0,
+    deleted: false,
+    deletedAt: null,
+    synced: false,
+    amountMl: 0,
+    note: '',
+    type: 'bag',
+    colorNote: '',
+    clots: false,
+    pain: false,
+    leakage: false,
+    fever: false,
+    otherNote: '',
+    bristolScale: 0,
+    state: 'Checked',
+    date: 'YYYY-MM-DD',
+    bagMl: 0,
+    urinalMl: 0,
+    totalMl: 0,
+    intakeMl: 0,
+};
 
 async function getDB() {
     return openDB(DB_NAME, DB_VERSION);
@@ -30,81 +63,29 @@ export async function exportBackup() {
     return payload;
 }
 
-export function exportSchemaDefinition() {
+export function exportSchemaDefinition(backupPayload = null) {
+    const data = backupPayload?.data || {};
+    const schemaData = {};
+
+    for (const storeName of STORE_NAMES) {
+        const baseFields = [...COMMON_FIELDS, ...(STORE_FIELDS[storeName] || [])];
+        const entryKeys = new Set(baseFields);
+        const entries = Array.isArray(data[storeName]) ? data[storeName] : [];
+        for (const entry of entries) {
+            Object.keys(entry || {}).forEach((key) => entryKeys.add(key));
+        }
+        const example = {};
+        for (const key of entryKeys) {
+            example[key] = Object.prototype.hasOwnProperty.call(DEFAULT_VALUES, key) ? DEFAULT_VALUES[key] : null;
+        }
+        schemaData[storeName] = [example];
+    }
+
     return {
         schemaVersion: 2,
         title: 'NephTrack JSON Export Schema',
         exportedAt: new Date().toISOString(),
-        data: {
-            intake: [{
-                id: 'uuid',
-                amountMl: 0,
-                note: '',
-                timestamp: 0,
-                updatedAt: 0,
-                deleted: false,
-                deletedAt: null,
-                synced: false,
-            }],
-            output: [{
-                id: 'uuid',
-                type: 'bag',
-                amountMl: 0,
-                colorNote: '',
-                clots: false,
-                pain: false,
-                leakage: false,
-                fever: false,
-                otherNote: '',
-                timestamp: 0,
-                updatedAt: 0,
-                deleted: false,
-                deletedAt: null,
-                synced: false,
-            }],
-            flush: [{
-                id: 'uuid',
-                amountMl: 0,
-                note: '',
-                timestamp: 0,
-                updatedAt: 0,
-                deleted: false,
-                deletedAt: null,
-                synced: false,
-            }],
-            bowel: [{
-                id: 'uuid',
-                bristolScale: 0,
-                note: '',
-                timestamp: 0,
-                updatedAt: 0,
-                deleted: false,
-                deletedAt: null,
-                synced: false,
-            }],
-            dressing: [{
-                id: 'uuid',
-                state: 'Checked',
-                note: '',
-                timestamp: 0,
-                updatedAt: 0,
-                deleted: false,
-                deletedAt: null,
-                synced: false,
-            }],
-            dailyTotals: [{
-                id: 'uuid',
-                date: 'YYYY-MM-DD',
-                bagMl: 0,
-                urinalMl: 0,
-                totalMl: 0,
-                intakeMl: 0,
-                updatedAt: 0,
-                deleted: false,
-                deletedAt: null,
-                synced: false,
-            }],
-        },
+        data: schemaData,
     };
 }
 

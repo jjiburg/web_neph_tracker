@@ -53,7 +53,8 @@ export default function SummaryView({ data, showToast }) {
     const handleExportSchema = async () => {
         setExportingSchema(true);
         try {
-            const payload = exportSchemaDefinition();
+            const backup = await exportBackup();
+            const payload = exportSchemaDefinition(backup);
             const json = JSON.stringify(payload, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
