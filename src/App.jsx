@@ -9,6 +9,7 @@ import { useData, useToast } from './hooks';
 import { syncData } from './sync';
 import { Icons } from './components/Icons';
 import { API_BASE, isNative, platform } from './config';
+import { drainSiriQueue } from './siriQueue';
 
 const TABS = [
     { id: 'log', label: 'Log', icon: <Icons.Plus /> },
@@ -87,6 +88,32 @@ export default function App() {
             };
         }
     }, [user, passphrase, data.refresh]);
+
+    useEffect(() => {
+        const applySiriCommand = async (item) => {
+            if (!item || item.kind !== 'intake') return;
+            const amount = Number(item.amountMl);
+            if (!Number.isFinite(amount) || amount <= 0) return;
+            await data.logIntake(amount, item.note || '', item.timestamp || Date.now());
+        };
+
+        const drainQueue = async () => {
+            const items = await drainSiriQueue(applySiriCommand);
+            if (items.length > 0) {
+                showToast(`Logged ${items.length} Siri entr${items.length === 1 ? 'y' : 'ies'}`);
+            }
+        };
+
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                drainQueue();
+            }
+        };
+
+        drainQueue();
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []);
 
     const handleAuth = async (isLogin, username, password, pass) => {
         const endpoint = isLogin ? `${API_BASE}/api/login` : `${API_BASE}/api/register`;
