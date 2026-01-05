@@ -45,6 +45,7 @@ export default function DiagnosticsPanel({ onClose }) {
     const handleResetLocalData = async () => {
         if (!window.confirm('This will permanently delete all local data on this device. Continue?')) return;
         setResetting(true);
+        localStorage.setItem('syncPaused', 'true');
         try {
             await clearLocalData();
             localStorage.removeItem('lastSyncCursor');
@@ -52,9 +53,11 @@ export default function DiagnosticsPanel({ onClose }) {
             localStorage.removeItem('lastSyncTime');
             setSyncStatus(null);
             setResults(null);
+            localStorage.removeItem('syncPaused');
             window.location.reload();
         } catch (e) {
             setError(e.message);
+            localStorage.removeItem('syncPaused');
         } finally {
             setResetting(false);
         }
@@ -63,6 +66,7 @@ export default function DiagnosticsPanel({ onClose }) {
     const handleClearCloudData = async () => {
         if (!window.confirm('This will permanently delete all cloud data for your account. Continue?')) return;
         setClearingCloud(true);
+        localStorage.setItem('syncPaused', 'true');
         try {
             const user = JSON.parse(localStorage.getItem('user') || 'null');
             if (!user?.token) throw new Error('Not authenticated');
@@ -82,9 +86,11 @@ export default function DiagnosticsPanel({ onClose }) {
             localStorage.removeItem('lastSyncTime');
             setSyncStatus(null);
             setResults(null);
+            localStorage.removeItem('syncPaused');
             window.location.reload();
         } catch (e) {
             setError(e.message);
+            localStorage.removeItem('syncPaused');
         } finally {
             setClearingCloud(false);
         }

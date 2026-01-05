@@ -4,6 +4,7 @@ import { openDB } from 'idb';
 import { API_BASE } from './config';
 
 const STORES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
+const SYNC_PAUSED_KEY = 'syncPaused';
 const STORE_ALIASES = {
     bag: 'output',
     urinal: 'output',
@@ -114,6 +115,7 @@ export function getSyncStatus() {
 
 export async function syncData(passphrase, token) {
     if (!passphrase || !token) return;
+    if (localStorage.getItem(SYNC_PAUSED_KEY) === 'true') return;
     if (syncInProgress) return;
     syncInProgress = true;
 
