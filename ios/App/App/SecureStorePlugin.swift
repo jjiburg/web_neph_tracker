@@ -3,9 +3,9 @@ import Capacitor
 
 @objc(SecureStorePlugin)
 public class SecureStorePlugin: CAPPlugin, CAPBridgedPlugin {
-    public static let identifier = "SecureStore"
-    public static let jsName = "SecureStore"
-    public static let pluginMethods: [CAPPluginMethod] = [
+    public let identifier = "SecureStorePlugin"
+    public let jsName = "SecureStore"
+    public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "setCredentials", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clearCredentials", returnType: CAPPluginReturnPromise)
     ]
@@ -32,4 +32,3 @@ public class SecureStorePlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["ok": true])
     }
 }
-

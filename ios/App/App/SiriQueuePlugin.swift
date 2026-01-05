@@ -3,9 +3,9 @@ import Capacitor
 
 @objc(SiriQueuePlugin)
 public class SiriQueuePlugin: CAPPlugin, CAPBridgedPlugin {
-    public static let identifier = "SiriQueue"
-    public static let jsName = "SiriQueue"
-    public static let pluginMethods: [CAPPluginMethod] = [
+    public let identifier = "SiriQueuePlugin"
+    public let jsName = "SiriQueue"
+    public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "getAndClear", returnType: CAPPluginReturnPromise)
     ]
 
