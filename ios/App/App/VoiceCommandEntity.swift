@@ -20,10 +20,17 @@ struct VoiceCommandQuery: EntityQuery, EntityStringQuery {
     }
 
     func suggestedEntities() async throws -> [VoiceCommandEntity] {
-        []
+        [
+            VoiceCommandEntity(id: "add 250ml water intake"),
+            VoiceCommandEntity(id: "log 500ml bag output"),
+            VoiceCommandEntity(id: "voided 200ml"),
+            VoiceCommandEntity(id: "did a flush"),
+        ]
     }
 
     func entities(matching string: String) async throws -> [VoiceCommandEntity] {
-        [VoiceCommandEntity(id: string)]
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return [] }
+        return [VoiceCommandEntity(id: trimmed)]
     }
 }
