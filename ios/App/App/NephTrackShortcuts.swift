@@ -1,7 +1,7 @@
 import AppIntents
 
 @available(iOS 16.0, *)
-struct NephTrackShortcuts: AppShortcutsProvider {
+struct Output TrackerShortcuts: AppShortcutsProvider {
     @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
         AppShortcut(

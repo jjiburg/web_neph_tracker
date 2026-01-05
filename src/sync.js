@@ -1,4 +1,4 @@
-// NephTrack Sync Service
+// Output Tracker Sync Service
 import { encryptData, decryptData } from './encryption';
 import { openDB } from 'idb';
 import { API_BASE } from './config';

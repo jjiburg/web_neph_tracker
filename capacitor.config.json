@@ -1,6 +1,6 @@
 {
   "appId": "com.nephtrack.app",
-  "appName": "NephTrack",
+  "appName": "Output Tracker",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",

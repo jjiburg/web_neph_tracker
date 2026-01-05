@@ -1,4 +1,4 @@
-// NephTrack Data Store - IndexedDB wrapper for offline-first persistence
+// Output Tracker Data Store - IndexedDB wrapper for offline-first persistence
 import { openDB } from 'idb';
 
 const DB_NAME = 'nephtrack';

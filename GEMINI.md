@@ -1,4 +1,4 @@
-# NephTrack (React + Capacitor)
+# Output Tracker (React + Capacitor)
 
 A nephrostomy care tracking app built with React and Capacitor, featuring an iOS 26 "Liquid Glass" design aesthetic.
 
@@ -85,7 +85,7 @@ The iOS app is generated via Capacitor:
 
 ## End-to-End Encryption (E2E)
 
-NephTrack uses a "Zero-Knowledge" architecture:
+Output Tracker uses a "Zero-Knowledge" architecture:
 - **Passphrase**: You set a passphrase on your device. This passphrase is NEVER sent to the server.
 - **Encryption**: Data is encrypted using AES-GCM (256-bit) before leaving your device.
 - **Privacy**: The server only sees encrypted blobs. Even if the database is compromised, your health data remains unreadable without your passphrase.

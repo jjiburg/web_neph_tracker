@@ -4,7 +4,7 @@ import Foundation
 @available(iOS 16.0, *)
 struct LogIntakeIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Intake"
-    static var description = IntentDescription("Log a water intake amount in NephTrack.")
+    static var description = IntentDescription("Log a water intake amount in Output Tracker.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Amount (ml)", default: 250)

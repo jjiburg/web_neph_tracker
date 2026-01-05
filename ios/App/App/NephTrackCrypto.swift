@@ -2,7 +2,7 @@ import Foundation
 import CommonCrypto
 import CryptoKit
 
-enum NephTrackCrypto {
+enum Output TrackerCrypto {
     private static let iterations: UInt32 = 100_000
     private static let salt = "nephtrack-salt-static".data(using: .utf8)!
 
@@ -15,7 +15,7 @@ enum NephTrackCrypto {
             SecRandomCopyBytes(kSecRandomDefault, 12, buf.baseAddress!)
         }
         if ivStatus != errSecSuccess {
-            throw NSError(domain: "NephTrackCrypto", code: Int(ivStatus))
+            throw NSError(domain: "Output TrackerCrypto", code: Int(ivStatus))
         }
 
         let sealed = try AES.GCM.seal(data, using: SymmetricKey(data: key), nonce: AES.GCM.Nonce(data: iv))
@@ -50,7 +50,7 @@ enum NephTrackCrypto {
         }
 
         if status != kCCSuccess {
-            throw NSError(domain: "NephTrackCrypto", code: Int(status))
+            throw NSError(domain: "Output TrackerCrypto", code: Int(status))
         }
 
         return derived

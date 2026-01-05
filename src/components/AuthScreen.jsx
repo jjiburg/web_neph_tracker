@@ -27,7 +27,7 @@ export default function AuthScreen({ onAuth, initialPassphrase }) {
                     <div style={{ width: '64px', height: '64px', margin: '0 auto 16px', background: 'var(--primary-gradient)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--glass-shadow)' }}>
                         <Icons.Activity size={32} color="white" />
                     </div>
-                    <h1 className="screen-header__title" style={{ fontSize: '28px', marginBottom: '8px' }}>NephTrack</h1>
+                    <h1 className="screen-header__title" style={{ fontSize: '28px', marginBottom: '8px' }}>Output Tracker</h1>
                     <p className="screen-header__subtitle">Secure Health Joural</p>
                 </header>
 

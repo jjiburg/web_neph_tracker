@@ -4,7 +4,7 @@ import Foundation
 @available(iOS 16.0, *)
 struct VoiceCommandIntent: AppIntent {
     static var title: LocalizedStringResource = "Log with Voice"
-    static var description = IntentDescription("Log a NephTrack entry from a natural language command.")
+    static var description = IntentDescription("Log a Output Tracker entry from a natural language command.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Command")
@@ -62,7 +62,7 @@ struct VoiceCommandIntent: AppIntent {
                   let passphrase = KeychainStore.get(account: "passphrase"),
                   !token.isEmpty, !passphrase.isEmpty
             else {
-                let msg: LocalizedStringResource = "Open NephTrack once to finish setup."
+                let msg: LocalizedStringResource = "Open Output Tracker once to finish setup."
                 return .result(dialog: IntentDialog(full: msg, supporting: msg))
             }
 
@@ -102,7 +102,7 @@ struct VoiceCommandIntent: AppIntent {
                 return .result(dialog: IntentDialog(full: msg, supporting: msg))
             }
 
-            let encryptedBlob = try NephTrackCrypto.encryptJSON(entryPayload, passphrase: passphrase)
+            let encryptedBlob = try Output TrackerCrypto.encryptJSON(entryPayload, passphrase: passphrase)
             let entryId = UUID().uuidString.lowercased()
 
             let pushUrl = URL(string: "https://output-tracker-production.up.railway.app/api/sync/push")!

@@ -63,7 +63,7 @@ export default function ImportSheet({ onClose, onSuccess }) {
 
                 <div className="sheet__content">
                     <p style={{ marginBottom: '20px', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
-                        Restore your history from a NephTrack iOS JSON backup file.
+                        Restore your history from a Output Tracker iOS JSON backup file.
                     </p>
 
                     <div className="glass-card glass-card--compact" style={{ marginBottom: '20px' }}>

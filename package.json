@@ -1,5 +1,5 @@
 {
-  "name": "neph-track",
+  "name": "output-tracker",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "cap:init": "cap init NephTrack com.nephtrack.app --web-dir dist",
+    "cap:init": "cap init \"Output Tracker\" com.nephtrack.app --web-dir dist",
     "cap:open:ios": "cap open ios",
     "start": "node server/index.js",
     "dev:server": "node server/index.js"

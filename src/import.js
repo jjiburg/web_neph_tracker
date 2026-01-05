@@ -1,6 +1,6 @@
 /**
- * NephTrack Import Utility
- * Parses and imports data exported from the native NephTrack iOS app.
+ * Output Tracker Import Utility
+ * Parses and imports data exported from the native Output Tracker iOS app.
  * Schema version: 1
  */
 
@@ -83,7 +83,7 @@ export function exportSchemaDefinition(backupPayload = null) {
 
     return {
         schemaVersion: 2,
-        title: 'NephTrack JSON Export Schema',
+        title: 'Output Tracker JSON Export Schema',
         exportedAt: new Date().toISOString(),
         data: schemaData,
     };
@@ -95,7 +95,7 @@ export async function clearLocalData() {
 }
 
 /**
- * Parses a NephTrack backup JSON file and imports the data into IndexedDB.
+ * Parses a Output Tracker backup JSON file and imports the data into IndexedDB.
  * @param {string} jsonString - The raw JSON string from the backup file.
  * @param {boolean} replaceExisting - If true, clears existing data before import.
  * @returns {Promise<{success: boolean, message: string, counts: object}>}

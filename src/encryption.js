@@ -1,5 +1,5 @@
 /**
- * NephTrack E2E Encryption
+ * Output Tracker E2E Encryption
  * Uses Web Crypto API (AES-GCM 256)
  * Server only sees encrypted blobs and IDs.
  */
