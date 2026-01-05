@@ -8,9 +8,26 @@ import { openDB } from 'idb';
 
 const DB_NAME = 'nephtrack';
 const DB_VERSION = 1;
+const STORE_NAMES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
 
 async function getDB() {
     return openDB(DB_NAME, DB_VERSION);
+}
+
+export async function exportBackup() {
+    const db = await getDB();
+    const payload = {
+        schemaVersion: 2,
+        exportedAt: new Date().toISOString(),
+        data: {},
+    };
+
+    for (const storeName of STORE_NAMES) {
+        const entries = await db.getAll(storeName);
+        payload.data[storeName] = entries.filter((entry) => !entry.deleted);
+    }
+
+    return payload;
 }
 
 export async function clearLocalData() {
@@ -28,15 +45,19 @@ export async function importBackup(jsonString, replaceExisting = false) {
     try {
         const payload = JSON.parse(jsonString);
 
-        // Validate schema
-        if (!payload.schemaVersion || payload.schemaVersion !== 1) {
-            return { success: false, message: 'Unsupported schema version. Expected version 1.' };
-        }
-
         const db = await getDB();
 
         if (replaceExisting) {
             await clearAllStores(db);
+        }
+
+        if (payload.schemaVersion === 2) {
+            return await importWebBackup(payload, db);
+        }
+
+        // Validate schema
+        if (!payload.schemaVersion || payload.schemaVersion !== 1) {
+            return { success: false, message: 'Unsupported schema version. Expected version 1 or 2.' };
         }
 
         const counts = {
@@ -184,9 +205,140 @@ export async function importBackup(jsonString, replaceExisting = false) {
     }
 }
 
+async function importWebBackup(payload, db) {
+    const data = payload.data || {};
+    const now = Date.now();
+    const counts = {
+        intakes: 0,
+        outputs: 0,
+        flushes: 0,
+        bowelMovements: 0,
+        dressings: 0,
+        dailyTotals: 0,
+    };
+
+    const normalizeOutputType = (type) => (type === 'void' ? 'urinal' : type);
+
+    if (Array.isArray(data.intake)) {
+        const tx = db.transaction('intake', 'readwrite');
+        for (const item of data.intake) {
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                timestamp: item.timestamp || now,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.intakes++;
+        }
+        await tx.done;
+    }
+
+    if (Array.isArray(data.output)) {
+        const tx = db.transaction('output', 'readwrite');
+        for (const item of data.output) {
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                type: normalizeOutputType(item.type || 'bag'),
+                timestamp: item.timestamp || now,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.outputs++;
+        }
+        await tx.done;
+    }
+
+    if (Array.isArray(data.flush)) {
+        const tx = db.transaction('flush', 'readwrite');
+        for (const item of data.flush) {
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                timestamp: item.timestamp || now,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.flushes++;
+        }
+        await tx.done;
+    }
+
+    if (Array.isArray(data.bowel)) {
+        const tx = db.transaction('bowel', 'readwrite');
+        for (const item of data.bowel) {
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                timestamp: item.timestamp || now,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.bowelMovements++;
+        }
+        await tx.done;
+    }
+
+    if (Array.isArray(data.dressing)) {
+        const tx = db.transaction('dressing', 'readwrite');
+        for (const item of data.dressing) {
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                timestamp: item.timestamp || now,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.dressings++;
+        }
+        await tx.done;
+    }
+
+    if (Array.isArray(data.dailyTotals)) {
+        const tx = db.transaction('dailyTotals', 'readwrite');
+        for (const item of data.dailyTotals) {
+            const dateStr = item.date || new Date(item.timestamp || now).toISOString().split('T')[0];
+            const bagMl = item.bagMl || 0;
+            const urinalMl = item.urinalMl || 0;
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                date: dateStr,
+                bagMl,
+                urinalMl,
+                totalMl: item.totalMl || bagMl + urinalMl,
+                intakeMl: item.intakeMl || 0,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.dailyTotals++;
+        }
+        await tx.done;
+    }
+
+    const totalImported = Object.values(counts).reduce((a, b) => a + b, 0);
+    return {
+        success: true,
+        message: `Successfully imported ${totalImported} records.`,
+        counts,
+    };
+}
+
 async function clearAllStores(db) {
-    const storeNames = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
-    for (const name of storeNames) {
+    for (const name of STORE_NAMES) {
         const tx = db.transaction(name, 'readwrite');
         await tx.store.clear();
         await tx.done;

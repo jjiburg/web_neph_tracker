@@ -4,11 +4,13 @@ import { formatMl, formatDateFull } from '../store';
 import ImportSheet from '../components/ImportSheet';
 import DiagnosticsPanel from '../components/DiagnosticsPanel';
 import { Icons } from '../components/Icons';
+import { exportBackup } from '../import';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [showImport, setShowImport] = useState(false);
     const [showDiagnostics, setShowDiagnostics] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const { dailyTotals, getTotalsForDay, recordDailyTotal, refresh } = data;
 
     const dayTotals = getTotalsForDay(selectedDate);
@@ -22,6 +24,29 @@ export default function SummaryView({ data, showToast }) {
         setShowImport(false);
         refresh();
         showToast('Data imported successfully');
+    };
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const payload = await exportBackup();
+            const json = JSON.stringify(payload, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const stamp = new Date().toISOString().slice(0, 10);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `nephtrack-backup-${stamp}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Backup exported');
+        } catch (e) {
+            showToast(`Export failed: ${e.message}`);
+        } finally {
+            setExporting(false);
+        }
     };
 
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
@@ -123,24 +148,33 @@ export default function SummaryView({ data, showToast }) {
                     </p>
                 </div>
 
-                {/* Import Backup */}
+                {/* Import / Export */}
                 <div className="glass-card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                         <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}>
                             <Icons.Download />
                         </div>
                         <div>
-                            <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Import Data</h2>
-                            <p className="text-dim" style={{ fontSize: '13px' }}>Restore from backup</p>
+                            <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Import / Export</h2>
+                            <p className="text-dim" style={{ fontSize: '13px' }}>Backup or restore your history</p>
                         </div>
                     </div>
 
-                    <button
-                        className="liquid-button liquid-button--secondary"
-                        onClick={() => setShowImport(true)}
-                    >
-                        Import JSON Backup
-                    </button>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                        <button
+                            className="liquid-button liquid-button--secondary"
+                            onClick={() => setShowImport(true)}
+                        >
+                            Import JSON Backup
+                        </button>
+                        <button
+                            className="liquid-button"
+                            onClick={handleExport}
+                            disabled={exporting}
+                        >
+                            {exporting ? 'Exporting...' : 'Export JSON Backup'}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Daily Totals History */}
