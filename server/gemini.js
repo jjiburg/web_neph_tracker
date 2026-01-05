@@ -112,7 +112,59 @@ export async function handleVoiceCommand(req, res) {
     }
 }
 
+export async function handleVoiceTextCommand(req, res) {
+    console.log('[VOICE] === New voice text request ===');
+
+    try {
+        const { text } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ error: 'No text provided' });
+        }
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ error: 'Gemini API key not configured' });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+        const result = await model.generateContent([
+            { text: SYSTEM_PROMPT },
+            { text: text },
+            { text: 'Parse this command and return JSON:' }
+        ]);
+
+        const response = await result.response;
+        const responseText = response.text();
+
+        let jsonStr = responseText.trim();
+        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+            jsonStr = jsonMatch[1].trim();
+        }
+
+        const parsed = JSON.parse(jsonStr);
+        res.json(parsed);
+    } catch (error) {
+        let errorMessage = 'Failed to process voice command';
+        if (error.message.includes('API_KEY')) {
+            errorMessage = 'Invalid API key';
+        } else if (error.message.includes('PERMISSION_DENIED')) {
+            errorMessage = 'API permission denied';
+        } else if (error.message.includes('JSON')) {
+            errorMessage = 'Could not parse response';
+        }
+
+        res.status(500).json({
+            error: errorMessage,
+            details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        });
+    }
+}
+
 export default function setupVoiceRoutes(app) {
     console.log('[VOICE] Setting up /api/voice route');
     app.post('/api/voice', handleVoiceCommand);
+    app.post('/api/voice-text', handleVoiceTextCommand);
 }

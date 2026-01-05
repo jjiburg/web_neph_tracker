@@ -64,6 +64,12 @@ The app includes a voice command feature using Gemini Flash 2.5:
   - "bowel movement type 4" → logs bowel
 
 Backend: `server/gemini.js` → `/api/voice` endpoint
+- Siri App Intent (lock screen) sends text to `/api/voice-text`, then queues the parsed command for the app to drain.
+
+### Siri (Lock Screen) Logging
+- Siri performs speech-to-text and provides the transcribed text to the App Intent.
+- The App Intent sends the text to `/api/voice-text` (Gemini parsing), then **encrypts the resulting event locally** and **pushes it immediately** via `/api/sync/push` using credentials stored in iOS Keychain.
+- If the network push fails, the intent falls back to local queueing so the app can drain and sync later.
 
 ## Capacitor iOS
 
@@ -147,6 +153,7 @@ The app implements iOS 26 "Liquid Glass" aesthetics:
 - `POST /api/sync/push` - Push encrypted entries (requires auth)
 - `GET /api/sync/pull` - Pull encrypted entries (requires auth)
 - `POST /api/voice` - Voice command parsing via Gemini
+- `POST /api/voice-text` - Voice command parsing from text via Gemini
 
 ---
 

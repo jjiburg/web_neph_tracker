@@ -10,6 +10,7 @@ import { syncData } from './sync';
 import { Icons } from './components/Icons';
 import { API_BASE, isNative, platform } from './config';
 import { drainSiriQueue } from './siriQueue';
+import { clearNativeCredentials, setNativeCredentials } from './secureStore';
 
 const TABS = [
     { id: 'log', label: 'Log', icon: <Icons.Plus /> },
@@ -91,10 +92,32 @@ export default function App() {
 
     useEffect(() => {
         const applySiriCommand = async (item) => {
-            if (!item || item.kind !== 'intake') return;
+            if (!item) return;
+            const action = item.action || item.kind;
+            const timestamp = item.timestamp || Date.now();
             const amount = Number(item.amountMl);
-            if (!Number.isFinite(amount) || amount <= 0) return;
-            await data.logIntake(amount, item.note || '', item.timestamp || Date.now());
+            const note = item.note || '';
+            switch (action) {
+                case 'intake':
+                    if (!Number.isFinite(amount) || amount <= 0) return;
+                    await data.logIntake(amount, note, timestamp);
+                    break;
+                case 'output':
+                    if (!Number.isFinite(amount) || amount <= 0) return;
+                    await data.logOutput(item.type || 'bag', amount, '', {}, note, timestamp);
+                    break;
+                case 'flush':
+                    await data.logFlush(Number.isFinite(amount) ? amount : 30, note, timestamp);
+                    break;
+                case 'bowel':
+                    await data.logBowel(Number(item.bristolScale) || 0, note, timestamp);
+                    break;
+                case 'dressing':
+                    await data.logDressing(item.state || 'Checked', note, timestamp);
+                    break;
+                default:
+                    break;
+            }
         };
 
         const drainQueue = async () => {
@@ -131,6 +154,7 @@ export default function App() {
                 const userData = { username, token: result.token };
                 localStorage.setItem('user', JSON.stringify(userData));
                 localStorage.setItem('passphrase', pass);
+                await setNativeCredentials(result.token, pass);
                 setUser(userData);
                 setPassphrase(pass);
                 setShowAuth(false);
@@ -174,7 +198,7 @@ export default function App() {
             {/* Logout button */}
             <div style={{ position: 'fixed', top: 'calc(var(--safe-top) + 20px)', right: '20px', zIndex: 1000 }}>
                 <button
-                    onClick={() => { localStorage.clear(); window.location.reload(); }}
+                    onClick={async () => { await clearNativeCredentials(); localStorage.clear(); window.location.reload(); }}
                     className="liquid-button--chip"
                     style={{ minHeight: '36px', display: 'flex', gap: '6px', alignItems: 'center' }}
                 >
