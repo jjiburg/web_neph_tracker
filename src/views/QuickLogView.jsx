@@ -133,7 +133,7 @@ export default function QuickLogView({ data, showToast }) {
                 <div className="quick-actions-grid">
                     {[100, 200, 300].map(amt => (
                         <button key={`bag-${amt}`} className="liquid-button--chip" onClick={() => handleAddEntry('output', { type: 'bag', amountMl: amt, timestamp: Date.now() })}>
-                            {amt}
+                            {amt} ml
                         </button>
                     ))}
                 </div>
@@ -145,7 +145,7 @@ export default function QuickLogView({ data, showToast }) {
                 <div className="quick-actions-grid">
                     {[25, 50, 100].map(amt => (
                         <button key={`void-${amt}`} className="liquid-button--chip" onClick={() => handleAddEntry('output', { type: 'void', amountMl: amt, timestamp: Date.now() })}>
-                            {amt}
+                            {amt} ml
                         </button>
                     ))}
                 </div>

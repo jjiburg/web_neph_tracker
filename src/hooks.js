@@ -59,7 +59,9 @@ export function useData() {
 
     const todayIntakeMl = todayIntakes.reduce((sum, e) => sum + e.amountMl, 0);
     const todayBagMl = todayOutputs.filter((e) => e.type === 'bag').reduce((sum, e) => sum + e.amountMl, 0);
-    const todayUrinalMl = todayOutputs.filter((e) => e.type === 'urinal').reduce((sum, e) => sum + e.amountMl, 0);
+    const todayUrinalMl = todayOutputs
+        .filter((e) => e.type === 'urinal' || e.type === 'void')
+        .reduce((sum, e) => sum + e.amountMl, 0);
     const todayTotalOutputMl = todayBagMl + todayUrinalMl;
 
     // Totals for a specific day
@@ -73,7 +75,9 @@ export function useData() {
         return {
             intakeMl: dayIntakes.reduce((sum, e) => sum + e.amountMl, 0),
             bagMl: dayOutputs.filter((e) => e.type === 'bag').reduce((sum, e) => sum + e.amountMl, 0),
-            urinalMl: dayOutputs.filter((e) => e.type === 'urinal').reduce((sum, e) => sum + e.amountMl, 0),
+            urinalMl: dayOutputs
+                .filter((e) => e.type === 'urinal' || e.type === 'void')
+                .reduce((sum, e) => sum + e.amountMl, 0),
             flushCount: dayFlushes.length,
             bowelCount: dayBowels.length,
             latestDressing: dayDressings.length > 0 ? dayDressings[0].state : null,

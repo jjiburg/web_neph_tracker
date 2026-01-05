@@ -25,11 +25,26 @@ export default function App() {
     const [passphrase, setPassphrase] = useState(() => localStorage.getItem('passphrase') || '');
     const [showAuth, setShowAuth] = useState(!user || !passphrase);
     const syncTimeoutRef = useRef(null);
+    const [syncStatus, setSyncStatus] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('syncStatus') || 'null');
+        } catch {
+            return null;
+        }
+    });
 
     const data = useData();
     const { toast, showToast } = useToast();
 
     // Capacitor & Sync initialization
+    useEffect(() => {
+        const handleSyncStatus = (event) => {
+            setSyncStatus(event.detail);
+        };
+        window.addEventListener('nephtrack-sync-status', handleSyncStatus);
+        return () => window.removeEventListener('nephtrack-sync-status', handleSyncStatus);
+    }, []);
+
     useEffect(() => {
         (async () => {
             try {
@@ -140,6 +155,13 @@ export default function App() {
                     <span>Logout</span>
                 </button>
             </div>
+
+            {syncStatus?.inProgress && syncStatus?.activeTransfer && (
+                <div className="sync-indicator">
+                    <span className="sync-indicator__dot" />
+                    <span>Syncing...</span>
+                </div>
+            )}
 
             {/* Toast */}
             <AnimatePresence>

@@ -39,6 +39,9 @@ function saveSyncStatus(partial) {
     const existing = loadSyncStatus();
     const next = { ...existing, ...partial };
     localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(next));
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nephtrack-sync-status', { detail: next }));
+    }
     return next;
 }
 
@@ -120,7 +123,8 @@ export async function syncData(passphrase, token) {
     syncInProgress = true;
 
     const startedAt = Date.now();
-    saveSyncStatus({ lastSyncStart: startedAt, lastError: null, inProgress: true });
+    let activeTransfer = false;
+    saveSyncStatus({ lastSyncStart: startedAt, lastError: null, inProgress: true, activeTransfer });
 
     const db = await openDB('nephtrack', 1);
 
@@ -132,6 +136,10 @@ export async function syncData(passphrase, token) {
             const unsynced = await getUnsyncedEntries(db, storeName);
             totalPending += unsynced.length;
             if (unsynced.length === 0) continue;
+            if (!activeTransfer) {
+                activeTransfer = true;
+                saveSyncStatus({ activeTransfer, syncPhase: 'push', pendingLocal: totalPending });
+            }
 
             for (let i = 0; i < unsynced.length; i += PUSH_BATCH_SIZE) {
                 const batch = unsynced.slice(i, i + PUSH_BATCH_SIZE);
@@ -190,6 +198,10 @@ export async function syncData(passphrase, token) {
 
             const { entries, nextCursor, serverTime } = await resp.json();
             lastServerTime = serverTime || lastServerTime;
+            if (entries?.length && !activeTransfer) {
+                activeTransfer = true;
+                saveSyncStatus({ activeTransfer, syncPhase: 'pull' });
+            }
 
             for (const entry of entries) {
                 try {
@@ -258,6 +270,7 @@ export async function syncData(passphrase, token) {
             lastPulled: totalPulled,
             pendingLocal: totalPending,
             lastServerTime,
+            activeTransfer: false,
             inProgress: false,
         });
     }

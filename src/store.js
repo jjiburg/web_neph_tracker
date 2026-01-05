@@ -121,7 +121,7 @@ export const deleteIntake = (id) => deleteEntry(STORES.INTAKE, id);
 // Output
 export const addOutput = (type, amountMl, colorNote = '', symptoms = {}, otherNote = '', timestamp = Date.now()) =>
     addEntry(STORES.OUTPUT, {
-        type, // 'bag' | 'urinal'
+        type: type === 'void' ? 'urinal' : type, // 'bag' | 'urinal'
         amountMl,
         colorNote,
         clots: symptoms.clots || false,
