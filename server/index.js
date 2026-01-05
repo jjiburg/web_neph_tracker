@@ -171,6 +171,15 @@ app.post('/api/sync/push', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/sync/clear', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM logs WHERE user_id = $1', [req.user.id]);
+        res.json({ success: true, deleted: result.rowCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/sync/pull', authenticateToken, async (req, res) => {
     const { since, limit } = req.query;
     const limitValue = Math.min(parseInt(limit || '500', 10), 1000);

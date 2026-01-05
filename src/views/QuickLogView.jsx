@@ -95,8 +95,12 @@ export default function QuickLogView({ data, showToast }) {
                         <div className="stat-card__value text-accent">{data.todayIntakeMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
                     </div>
                     <div className="stat-card">
-                        <div className="stat-card__label">Out</div>
-                        <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>{data.todayTotalOutputMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
+                        <div className="stat-card__label">Bag</div>
+                        <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>{data.todayBagMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-card__label">Normal</div>
+                        <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>{data.todayUrinalMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
                     </div>
                 </div>
             </div>

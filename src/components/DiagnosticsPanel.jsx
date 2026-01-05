@@ -9,6 +9,7 @@ export default function DiagnosticsPanel({ onClose }) {
     const [error, setError] = useState(null);
     const [syncStatus, setSyncStatus] = useState(null);
     const [resetting, setResetting] = useState(false);
+    const [clearingCloud, setClearingCloud] = useState(false);
 
     useEffect(() => {
         try {
@@ -56,6 +57,36 @@ export default function DiagnosticsPanel({ onClose }) {
             setError(e.message);
         } finally {
             setResetting(false);
+        }
+    };
+
+    const handleClearCloudData = async () => {
+        if (!window.confirm('This will permanently delete all cloud data for your account. Continue?')) return;
+        setClearingCloud(true);
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            if (!user?.token) throw new Error('Not authenticated');
+            const resp = await fetch(`${API_BASE}/api/sync/clear`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            });
+            if (!resp.ok) {
+                throw new Error(`Cloud reset failed (${resp.status})`);
+            }
+            await clearLocalData();
+            localStorage.removeItem('lastSyncCursor');
+            localStorage.removeItem('syncStatus');
+            localStorage.removeItem('lastSyncTime');
+            setSyncStatus(null);
+            setResults(null);
+            window.location.reload();
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setClearingCloud(false);
         }
     };
 
@@ -172,6 +203,18 @@ export default function DiagnosticsPanel({ onClose }) {
                         style={{ width: '100%', marginTop: 16 }}
                     >
                         Close
+                    </button>
+                    <button
+                        className="liquid-button"
+                        onClick={handleClearCloudData}
+                        disabled={clearingCloud}
+                        style={{
+                            width: '100%',
+                            marginTop: 12,
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(251, 191, 36, 0.9))',
+                        }}
+                    >
+                        {clearingCloud ? 'Clearing Cloud Data...' : 'Clear Cloud Data'}
                     </button>
                     <button
                         className="liquid-button"
