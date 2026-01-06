@@ -30,6 +30,14 @@ export default function BowelSheet({ onSave, onClose, initialValues, mode = 'cre
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.15}
+                onDragEnd={(_, info) => {
+                    if (info.offset.y > 120 || info.velocity.y > 900) {
+                        onClose();
+                    }
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="sheet__handle" />

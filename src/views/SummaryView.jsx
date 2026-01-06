@@ -79,8 +79,10 @@ export default function SummaryView({ data, showToast }) {
     return (
         <div className="page">
             <header className="screen-header">
-                <h1 className="screen-header__title">Summary</h1>
-                <p className="screen-header__subtitle">Daily Totals</p>
+                <div>
+                    <h1 className="screen-header__title">Summary</h1>
+                    <p className="screen-header__subtitle">Daily Totals</p>
+                </div>
             </header>
 
             <div className="page__content">
@@ -256,24 +258,25 @@ export default function SummaryView({ data, showToast }) {
                 )}
             </AnimatePresence>
 
-            {/* Debug Button - tap 5 times on Summary title to show */}
-            <button
-                onClick={() => setShowDiagnostics(true)}
-                style={{
-                    position: 'fixed',
-                    bottom: 100,
-                    left: 20,
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    padding: '8px 12px',
-                    color: 'var(--text-dim)',
-                    fontSize: 12,
-                    zIndex: 50
-                }}
-            >
-                🔧 Diagnostics
-            </button>
+            {/* Settings */}
+            <div className="glass-card" style={{ marginTop: 16 }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Settings</h2>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                    <button
+                        className="liquid-button liquid-button--secondary"
+                        onClick={() => setShowDiagnostics(true)}
+                    >
+                        🔧 Diagnostics
+                    </button>
+                    <button
+                        className="liquid-button"
+                        onClick={() => { localStorage.clear(); window.location.reload(); }}
+                        style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.45)', color: '#fecaca' }}
+                    >
+                        <Icons.LogOut /> <span style={{ marginLeft: 8 }}>Logout</span>
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

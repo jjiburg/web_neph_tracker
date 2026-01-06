@@ -148,18 +148,6 @@ export default function App() {
             {/* Animated Liquid Background */}
             <div className="liquid-background" />
 
-            {/* Logout button */}
-            <div style={{ position: 'fixed', top: 'calc(var(--safe-top) + 20px)', right: '20px', zIndex: 1000 }}>
-                <button
-                    onClick={() => { localStorage.clear(); window.location.reload(); }}
-                    className="liquid-button--chip"
-                    style={{ minHeight: '36px', display: 'flex', gap: '6px', alignItems: 'center' }}
-                >
-                    <Icons.LogOut />
-                    <span>Logout</span>
-                </button>
-            </div>
-
             {syncStatus?.inProgress && syncStatus?.activeTransfer && (
                 <div className="sync-indicator">
                     <span className="sync-indicator__dot" />

@@ -236,8 +236,10 @@ export default function TrendsView({ data, showToast }) {
     return (
         <div className="page">
             <header className="screen-header">
-                <h1 className="screen-header__title">Trends</h1>
-                <p className="screen-header__subtitle">Range Insights</p>
+                <div>
+                    <h1 className="screen-header__title">Trends</h1>
+                    <p className="screen-header__subtitle">Range Insights</p>
+                </div>
             </header>
 
             <div className="page__content">
