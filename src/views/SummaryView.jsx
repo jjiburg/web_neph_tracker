@@ -129,11 +129,11 @@ export default function SummaryView({ data, showToast }) {
                     <div className="stats-grid">
                         <div className="stat-card">
                             <div className="stat-card__label">Neph Bag</div>
-                            <div className="stat-card__value">{formatMl(dayTotals.bagMl)}</div>
+                            <div className="stat-card__value" style={{ color: 'var(--color-bag)' }}>{formatMl(dayTotals.bagMl)}</div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-card__label">Voided</div>
-                            <div className="stat-card__value">{formatMl(dayTotals.urinalMl)}</div>
+                            <div className="stat-card__value" style={{ color: 'var(--color-void)' }}>{formatMl(dayTotals.urinalMl)}</div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-card__label">Total Output</div>
@@ -143,7 +143,7 @@ export default function SummaryView({ data, showToast }) {
                         </div>
                         <div className="stat-card">
                             <div className="stat-card__label">Total Intake</div>
-                            <div className="stat-card__value text-accent">
+                            <div className="stat-card__value" style={{ color: 'var(--color-intake)' }}>
                                 {formatMl(dayTotals.intakeMl)}
                             </div>
                         </div>

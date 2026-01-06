@@ -27,6 +27,11 @@
   --text-dim: #94a3b8;
   --text-accent: #e2e8f0;
 
+  /* Tracking Colors */
+  --color-intake: var(--primary);
+  --color-bag: var(--secondary);
+  --color-void: #22d3ee;
+
   /* Spacing & Radius */
   --radius-sm: 12px;
   --radius-md: 20px;

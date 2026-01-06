@@ -92,15 +92,15 @@ export default function QuickLogView({ data, showToast }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
                     <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
                         <div className="stat-card__label" style={{ fontSize: 11 }}>In</div>
-                        <div className="stat-card__value text-accent" style={{ fontSize: 18 }}>{data.todayIntakeMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
+                        <div className="stat-card__value" style={{ fontSize: 18, color: 'var(--color-intake)' }}>{data.todayIntakeMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
                     </div>
                     <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
                         <div className="stat-card__label" style={{ fontSize: 11 }}>Bag</div>
-                        <div className="stat-card__value" style={{ color: 'var(--secondary)', fontSize: 18 }}>{data.todayBagMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
+                        <div className="stat-card__value" style={{ color: 'var(--color-bag)', fontSize: 18 }}>{data.todayBagMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
                     </div>
                     <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
                         <div className="stat-card__label" style={{ fontSize: 11 }}>Normal</div>
-                        <div className="stat-card__value" style={{ color: 'var(--primary)', fontSize: 18 }}>{data.todayUrinalMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
+                        <div className="stat-card__value" style={{ color: 'var(--color-void)', fontSize: 18 }}>{data.todayUrinalMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
                     </div>
                 </div>
             </div>
@@ -118,7 +118,11 @@ export default function QuickLogView({ data, showToast }) {
                         </button>
                     ))}
                 </div>
-                <button className="liquid-button secondary-action" onClick={() => setSheet({ type: 'intake', quickAmounts: [63, 236, 710] })}>
+                <button
+                    className="liquid-button secondary-action"
+                    style={{ minHeight: 38, padding: '10px 12px', fontSize: 13 }}
+                    onClick={() => setSheet({ type: 'intake', quickAmounts: [63, 236, 710] })}
+                >
                     Custom Amount...
                 </button>
             </div>
@@ -137,7 +141,11 @@ export default function QuickLogView({ data, showToast }) {
                         </button>
                     ))}
                 </div>
-                <button className="liquid-button secondary-action" onClick={() => setSheet({ type: 'output', subType: 'bag', quickAmounts: [100, 200, 300, 400, 500] })}>
+                <button
+                    className="liquid-button secondary-action"
+                    style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
+                    onClick={() => setSheet({ type: 'output', subType: 'bag', quickAmounts: [100, 200, 300, 400, 500] })}
+                >
                     Custom...
                 </button>
 
@@ -149,7 +157,11 @@ export default function QuickLogView({ data, showToast }) {
                         </button>
                     ))}
                 </div>
-                <button className="liquid-button secondary-action" onClick={() => setSheet({ type: 'output', subType: 'void', quickAmounts: [25, 50, 100, 150, 200] })}>
+                <button
+                    className="liquid-button secondary-action"
+                    style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
+                    onClick={() => setSheet({ type: 'output', subType: 'void', quickAmounts: [25, 50, 100, 150, 200] })}
+                >
                     Custom...
                 </button>
             </div>

@@ -300,13 +300,13 @@ export default function TrendsView({ data, showToast }) {
                     <div style={{ display: 'grid', gap: '10px', marginBottom: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
                         <div className="stat-card" style={{ padding: '12px' }}>
                             <div className="stat-card__label">Range Intake</div>
-                            <div className="stat-card__value" style={{ color: 'var(--text-accent)' }}>
+                            <div className="stat-card__value" style={{ color: 'var(--color-intake)' }}>
                                 {formatMl(rangeSummary.totals.intakeMl)}
                             </div>
                         </div>
                         <div className="stat-card" style={{ padding: '12px' }}>
                             <div className="stat-card__label">Range Output</div>
-                            <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>
+                            <div className="stat-card__value" style={{ color: 'var(--color-bag)' }}>
                                 {formatMl(rangeSummary.totals.totalOutput)}
                             </div>
                         </div>
@@ -335,6 +335,8 @@ export default function TrendsView({ data, showToast }) {
                                     const voidRatio = day.totalOutput ? day.voidMl / day.totalOutput : 0;
                                     let bagHeight = day.bagMl > 0 ? Math.max(minSegment, outputHeight * bagRatio) : 0;
                                     let voidHeight = day.voidMl > 0 ? Math.max(minSegment, outputHeight * voidRatio) : 0;
+                                    const hasBag = bagHeight > 0;
+                                    const hasVoid = voidHeight > 0;
                                     const totalStack = bagHeight + voidHeight;
                                     if (totalStack > outputHeight && totalStack > 0) {
                                         const scale = outputHeight / totalStack;
@@ -346,7 +348,7 @@ export default function TrendsView({ data, showToast }) {
                                             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 92 }}>
                                                 <div style={{
                                                     flex: 1,
-                                                    background: 'var(--text-accent)',
+                                                    background: 'var(--color-intake)',
                                                     borderRadius: 6,
                                                     height: `${intakeHeight}px`,
                                                     minHeight: day.intakeMl > 0 ? 4 : 0,
@@ -361,18 +363,22 @@ export default function TrendsView({ data, showToast }) {
                                                     minHeight: day.totalOutput > 0 ? 4 : 0,
                                                 }}>
                                                     <div style={{
-                                                        background: 'var(--secondary)',
+                                                        background: 'var(--color-bag)',
                                                         height: `${bagHeight}px`,
                                                         minHeight: day.bagMl > 0 ? 4 : 0,
-                                                        borderTopLeftRadius: 6,
-                                                        borderTopRightRadius: 6,
+                                                        borderTopLeftRadius: hasVoid ? 6 : 6,
+                                                        borderTopRightRadius: hasVoid ? 6 : 6,
+                                                        borderBottomLeftRadius: hasVoid ? 0 : 6,
+                                                        borderBottomRightRadius: hasVoid ? 0 : 6,
                                                     }} />
                                                     <div style={{
-                                                        background: 'var(--primary)',
+                                                        background: 'var(--color-void)',
                                                         height: `${voidHeight}px`,
                                                         minHeight: day.voidMl > 0 ? 4 : 0,
-                                                        borderBottomLeftRadius: 6,
-                                                        borderBottomRightRadius: 6,
+                                                        borderBottomLeftRadius: hasBag ? 6 : 6,
+                                                        borderBottomRightRadius: hasBag ? 6 : 6,
+                                                        borderTopLeftRadius: hasBag ? 0 : 6,
+                                                        borderTopRightRadius: hasBag ? 0 : 6,
                                                     }} />
                                                 </div>
                                             </div>
@@ -386,15 +392,15 @@ export default function TrendsView({ data, showToast }) {
                         </div>
                         <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-dim)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--text-accent)' }} />
+                                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--color-intake)' }} />
                                 Intake
                             </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--secondary)' }} />
+                                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--color-bag)' }} />
                                 Bag Output
                             </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--primary)' }} />
+                                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--color-void)' }} />
                                 Void Output
                             </span>
                         </div>
