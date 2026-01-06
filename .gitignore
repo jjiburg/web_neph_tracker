@@ -5,8 +5,17 @@ node_modules/
 dist/
 
 # Capacitor
-ios/
-android/
+# Track native projects; ignore build artifacts/deps instead.
+ios/App/Pods/
+ios/App/DerivedData/
+ios/App/*.xcuserdatad/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/Output\ Tracker.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/Output\ Tracker.xcodeproj/xcuserdata/
+ios/.DS_Store
+android/.gradle/
+android/app/build/
 
 # IDE
 .vscode/

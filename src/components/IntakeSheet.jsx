@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
 export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
     const [amountMl, setAmountMl] = useState('');
     const [note, setNote] = useState('');
-    const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16));
+    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
 
     const handleSave = () => {
         if (!amountMl || parseFloat(amountMl) <= 0) return;

@@ -68,7 +68,7 @@ Backend: `server/gemini.js` → `/api/voice` endpoint
 ## Capacitor iOS
 
 The iOS app is generated via Capacitor:
-- **Project location**: `ios/App/App.xcworkspace` (open this in Xcode)
+- **Project location**: `ios/App/Output Tracker.xcworkspace` (open this in Xcode)
 - **API configuration**: `src/config.js` detects native platform and uses production API
 - **CORS**: Server configured to accept `capacitor://localhost` origin
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
@@ -7,7 +8,7 @@ const BRISTOL_SCALE = [0, 1, 2, 3, 4, 5, 6, 7];
 export default function BowelSheet({ onSave, onClose }) {
     const [bristolScale, setBristolScale] = useState(0);
     const [note, setNote] = useState('');
-    const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16));
+    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
 
     const handleSave = () => {
         onSave(bristolScale, note, new Date(timestamp).getTime());

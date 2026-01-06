@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
@@ -7,7 +8,7 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
     const [colorNote, setColorNote] = useState('');
     const [otherNote, setOtherNote] = useState('');
     const [symptoms, setSymptoms] = useState({ clots: false, pain: false, leakage: false, fever: false });
-    const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16));
+    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
 
     const toggleSymptom = (key) => {
         setSymptoms((prev) => ({ ...prev, [key]: !prev[key] }));

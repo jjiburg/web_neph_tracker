@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
 export default function FlushSheet({ onSave, onClose }) {
     const [amountMl, setAmountMl] = useState('30');
     const [note, setNote] = useState('');
-    const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16));
+    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
 
     const handleSave = () => {
         onSave(parseFloat(amountMl) || 30, note, new Date(timestamp).getTime());

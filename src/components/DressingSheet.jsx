@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
@@ -7,7 +8,7 @@ const DRESSING_STATES = ['Checked', 'Needs Changing', 'Changed Today'];
 export default function DressingSheet({ onSave, onClose }) {
     const [state, setState] = useState('Checked');
     const [note, setNote] = useState('');
-    const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16));
+    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
 
     const handleSave = () => {
         onSave(state, note, new Date(timestamp).getTime());
