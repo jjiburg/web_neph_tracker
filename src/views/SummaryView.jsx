@@ -95,7 +95,14 @@ export default function SummaryView({ data, showToast }) {
     }
 
     const range = useMemo(() => {
-        const end = parseLocalDate(rangePreset === 'custom' ? customEnd : toDateKey(new Date()));
+        const now = new Date();
+        if (rangePreset === '12h' || rangePreset === '1d' || rangePreset === '2d') {
+            const hours = rangePreset === '12h' ? 12 : rangePreset === '2d' ? 48 : 24;
+            const start = new Date(now.getTime() - hours * 60 * 60 * 1000);
+            return { start, end: now, usesHours: true };
+        }
+
+        const end = parseLocalDate(rangePreset === 'custom' ? customEnd : toDateKey(now));
         let start;
         if (rangePreset === 'custom') {
             start = parseLocalDate(customStart);
@@ -105,14 +112,17 @@ export default function SummaryView({ data, showToast }) {
             start.setDate(end.getDate() - (days - 1));
         }
         start.setHours(0, 0, 0, 0);
-        end.setHours(0, 0, 0, 0);
-        return { start, end };
+        end.setHours(23, 59, 59, 999);
+        return { start, end, usesHours: false };
     }, [rangePreset, customStart, customEnd]);
 
     const rangeDays = useMemo(() => {
         const days = [];
         const cursor = new Date(range.start);
-        while (cursor <= range.end) {
+        cursor.setHours(0, 0, 0, 0);
+        const end = new Date(range.end);
+        end.setHours(0, 0, 0, 0);
+        while (cursor <= end) {
             days.push(new Date(cursor));
             cursor.setDate(cursor.getDate() + 1);
         }
@@ -136,12 +146,17 @@ export default function SummaryView({ data, showToast }) {
             }
             return map.get(dateKey);
         };
+        const rangeStart = range.start.getTime();
+        const rangeEnd = range.end.getTime();
+        const inRange = (ts) => ts >= rangeStart && ts <= rangeEnd;
 
         data.intakes.forEach((entry) => {
+            if (!inRange(entry.timestamp)) return;
             const key = toDateKey(entry.timestamp);
             ensure(key).intakeMl += entry.amountMl || 0;
         });
         data.outputs.forEach((entry) => {
+            if (!inRange(entry.timestamp)) return;
             const key = toDateKey(entry.timestamp);
             const bucket = ensure(key);
             const type = entry.type === 'void' ? 'urinal' : entry.type;
@@ -152,14 +167,17 @@ export default function SummaryView({ data, showToast }) {
             }
         });
         data.flushes.forEach((entry) => {
+            if (!inRange(entry.timestamp)) return;
             const key = toDateKey(entry.timestamp);
             ensure(key).flushCount += 1;
         });
         data.bowels.forEach((entry) => {
+            if (!inRange(entry.timestamp)) return;
             const key = toDateKey(entry.timestamp);
             ensure(key).bowelCount += 1;
         });
         data.dressings.forEach((entry) => {
+            if (!inRange(entry.timestamp)) return;
             const key = toDateKey(entry.timestamp);
             const bucket = ensure(key);
             if ((entry.timestamp || 0) >= bucket.dressingTimestamp) {
@@ -169,7 +187,7 @@ export default function SummaryView({ data, showToast }) {
         });
 
         return map;
-    }, [data.intakes, data.outputs, data.flushes, data.bowels, data.dressings]);
+    }, [data.intakes, data.outputs, data.flushes, data.bowels, data.dressings, range]);
 
     const rangeSummary = useMemo(() => {
         const days = rangeDays.map((day) => {
@@ -379,8 +397,8 @@ export default function SummaryView({ data, showToast }) {
                         Trends
                     </h2>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                        {['7d', '14d', '30d', 'custom'].map((preset) => (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                        {['12h', '1d', '2d', '7d', '14d', '30d', 'custom'].map((preset) => (
                             <button
                                 key={preset}
                                 className={`filter-chip ${rangePreset === preset ? 'active' : ''}`}
@@ -426,46 +444,60 @@ export default function SummaryView({ data, showToast }) {
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+                    <div style={{ display: 'grid', gap: '10px', marginBottom: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                        <div className="stat-card" style={{ padding: '12px' }}>
                             <div className="stat-card__label">Range Intake</div>
-                            <div className="stat-card__value text-accent">{formatMl(rangeSummary.totals.intakeMl)}</div>
+                            <div className="stat-card__value" style={{ color: 'var(--text-accent)' }}>
+                                {formatMl(rangeSummary.totals.intakeMl)}
+                            </div>
                         </div>
-                        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+                        <div className="stat-card" style={{ padding: '12px' }}>
                             <div className="stat-card__label">Range Output</div>
                             <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>
                                 {formatMl(rangeSummary.totals.totalOutput)}
                             </div>
                         </div>
-                        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+                        <div className="stat-card" style={{ padding: '12px' }}>
                             <div className="stat-card__label">Net</div>
-                            <div className="stat-card__value">{formatMl(rangeSummary.totals.totalOutput - rangeSummary.totals.intakeMl)}</div>
+                            <div className="stat-card__value" style={{ fontSize: 20 }}>
+                                {formatMl(rangeSummary.totals.totalOutput - rangeSummary.totals.intakeMl)}
+                            </div>
                         </div>
                     </div>
 
                     {/* Balance Chart */}
-                    <div style={{ marginBottom: '12px' }}>
-                        <div className="text-dim" style={{ fontSize: '12px', marginBottom: '8px' }}>Intake vs Output</div>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', height: 140, paddingBottom: 8 }}>
+                    <div style={{ marginBottom: '10px' }}>
+                        <div className="text-dim" style={{ fontSize: '12px', marginBottom: '6px' }}>Intake vs Output</div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', height: 120, paddingBottom: 6 }}>
                             {(() => {
                                 const maxValue = Math.max(
                                     1,
                                     ...rangeSummary.days.map((day) => Math.max(day.intakeMl, day.totalOutput))
                                 );
                                 return rangeSummary.days.map((day) => {
-                                    const intakeHeight = (day.intakeMl / maxValue) * 100;
-                                    const outputHeight = (day.totalOutput / maxValue) * 100;
+                                    const chartHeight = 100;
+                                    const intakeHeight = Math.max(day.intakeMl > 0 ? 6 : 0, (day.intakeMl / maxValue) * chartHeight);
+                                    const outputHeight = Math.max(day.totalOutput > 0 ? 6 : 0, (day.totalOutput / maxValue) * chartHeight);
+                                    const minSegment = 4;
                                     const bagRatio = day.totalOutput ? day.bagMl / day.totalOutput : 0;
                                     const voidRatio = day.totalOutput ? day.voidMl / day.totalOutput : 0;
+                                    let bagHeight = day.bagMl > 0 ? Math.max(minSegment, outputHeight * bagRatio) : 0;
+                                    let voidHeight = day.voidMl > 0 ? Math.max(minSegment, outputHeight * voidRatio) : 0;
+                                    const totalStack = bagHeight + voidHeight;
+                                    if (totalStack > outputHeight && totalStack > 0) {
+                                        const scale = outputHeight / totalStack;
+                                        bagHeight *= scale;
+                                        voidHeight *= scale;
+                                    }
                                     return (
-                                        <div key={day.dateKey} style={{ flex: 1, minWidth: 18, textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120 }}>
+                                        <div key={day.dateKey} style={{ flex: 1, minWidth: 16, textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
                                                 <div style={{
                                                     flex: 1,
                                                     background: 'var(--text-accent)',
-                                                    borderRadius: 8,
-                                                    height: `${intakeHeight}%`,
-                                                    minHeight: day.intakeMl > 0 ? 6 : 0,
+                                                    borderRadius: 6,
+                                                    height: `${intakeHeight}px`,
+                                                    minHeight: day.intakeMl > 0 ? 4 : 0,
                                                     opacity: 0.8,
                                                 }} />
                                                 <div style={{
@@ -473,26 +505,26 @@ export default function SummaryView({ data, showToast }) {
                                                     display: 'flex',
                                                     flexDirection: 'column',
                                                     justifyContent: 'flex-end',
-                                                    height: `${outputHeight}%`,
-                                                    minHeight: day.totalOutput > 0 ? 6 : 0,
+                                                    height: `${outputHeight}px`,
+                                                    minHeight: day.totalOutput > 0 ? 4 : 0,
                                                 }}>
                                                     <div style={{
                                                         background: 'var(--secondary)',
-                                                        height: `${bagRatio * 100}%`,
+                                                        height: `${bagHeight}px`,
                                                         minHeight: day.bagMl > 0 ? 4 : 0,
-                                                        borderTopLeftRadius: 8,
-                                                        borderTopRightRadius: 8,
+                                                        borderTopLeftRadius: 6,
+                                                        borderTopRightRadius: 6,
                                                     }} />
                                                     <div style={{
                                                         background: 'var(--primary)',
-                                                        height: `${voidRatio * 100}%`,
+                                                        height: `${voidHeight}px`,
                                                         minHeight: day.voidMl > 0 ? 4 : 0,
-                                                        borderBottomLeftRadius: 8,
-                                                        borderBottomRightRadius: 8,
+                                                        borderBottomLeftRadius: 6,
+                                                        borderBottomRightRadius: 6,
                                                     }} />
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 6 }}>
+                                            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
                                                 {day.date.toLocaleDateString([], { weekday: 'short' })}
                                             </div>
                                         </div>
@@ -518,14 +550,14 @@ export default function SummaryView({ data, showToast }) {
 
                     {/* Output Trend */}
                     <div>
-                        <div className="text-dim" style={{ fontSize: '12px', marginBottom: '8px' }}>Output Trend</div>
+                        <div className="text-dim" style={{ fontSize: '12px', marginBottom: '6px' }}>Output Trend</div>
                         {(() => {
-                            const chartHeight = 120;
+                            const chartHeight = 100;
                             const chartWidth = Math.max(1, (rangeSummary.days.length - 1) * 22);
                             const values = rangeSummary.days.map((day) => day.totalOutput);
                             const maxValue = Math.max(1, ...values);
                             const paddingTop = 10;
-                            const paddingBottom = 20;
+                            const paddingBottom = 16;
                             const usableHeight = chartHeight - paddingTop - paddingBottom;
                             const median = rangeSummary.median;
                             const lowThreshold = median > 0 ? median * 0.7 : 0;
@@ -542,7 +574,7 @@ export default function SummaryView({ data, showToast }) {
 
                             return (
                                 <>
-                                    <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+                                    <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
                                         <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none">
                                             {median > 0 && (
                                                 <rect
@@ -576,12 +608,12 @@ export default function SummaryView({ data, showToast }) {
                                         </svg>
                                     </div>
                                     {median > 0 && (
-                                        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
+                                        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>
                                             Baseline: {formatMl(Math.round(median))} · Low output flagged under {formatMl(Math.round(lowThreshold))}
                                         </div>
                                     )}
                                     {median > 0 && lowDays.length > 0 && (
-                                        <div style={{ marginTop: 8, fontSize: 12, color: '#fca5a5' }}>
+                                        <div style={{ marginTop: 6, fontSize: 12, color: '#fca5a5' }}>
                                             Low output days: {lowDays.map((day) => day.date.toLocaleDateString([], { month: 'short', day: 'numeric' })).join(', ')}
                                         </div>
                                     )}
