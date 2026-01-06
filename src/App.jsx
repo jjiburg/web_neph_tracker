@@ -14,8 +14,8 @@ import { API_BASE, isNative, platform } from './config';
 const TABS = [
     { id: 'log', label: 'Log', icon: <Icons.Plus /> },
     { id: 'history', label: 'History', icon: <Icons.Clock /> },
-    { id: 'summary', label: 'Summary', icon: <Icons.Calendar /> },
     { id: 'trends', label: 'Trends', icon: <Icons.Chart /> },
+    { id: 'summary', label: 'Summary', icon: <Icons.Calendar /> },
 ];
 
 const SYNC_INTERVAL_MS = 10000;

@@ -159,6 +159,8 @@ export default function TrendsView({ data, showToast }) {
         return { days, totals, median };
     }, [rangeDays, daySummaries]);
 
+    const compactCardStyle = { marginBottom: 12 };
+
     const handleExportReport = async (format) => {
         try {
             const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -243,7 +245,7 @@ export default function TrendsView({ data, showToast }) {
             </header>
 
             <div className="page__content">
-                <div className="glass-card">
+                <div className="glass-card" style={compactCardStyle}>
                     <h2 className="section__title" style={{ fontSize: '18px', marginBottom: '16px' }}>
                         Trends
                     </h2>
@@ -316,16 +318,16 @@ export default function TrendsView({ data, showToast }) {
                         </div>
                     </div>
 
-                    <div style={{ marginBottom: '10px' }}>
+                    <div style={{ marginBottom: '8px' }}>
                         <div className="text-dim" style={{ fontSize: '12px', marginBottom: '6px' }}>Intake vs Output</div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', height: 120, paddingBottom: 6 }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', height: 110, paddingBottom: 4 }}>
                             {(() => {
                                 const maxValue = Math.max(
                                     1,
                                     ...rangeSummary.days.map((day) => Math.max(day.intakeMl, day.totalOutput))
                                 );
                                 return rangeSummary.days.map((day) => {
-                                    const chartHeight = 100;
+                                    const chartHeight = 92;
                                     const intakeHeight = Math.max(day.intakeMl > 0 ? 6 : 0, (day.intakeMl / maxValue) * chartHeight);
                                     const outputHeight = Math.max(day.totalOutput > 0 ? 6 : 0, (day.totalOutput / maxValue) * chartHeight);
                                     const minSegment = 4;
@@ -341,7 +343,7 @@ export default function TrendsView({ data, showToast }) {
                                     }
                                     return (
                                         <div key={day.dateKey} style={{ flex: 1, minWidth: 16, textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
+                                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 92 }}>
                                                 <div style={{
                                                     flex: 1,
                                                     background: 'var(--text-accent)',
@@ -401,7 +403,7 @@ export default function TrendsView({ data, showToast }) {
                     <div>
                         <div className="text-dim" style={{ fontSize: '12px', marginBottom: '6px' }}>Output Trend</div>
                         {(() => {
-                            const chartHeight = 100;
+                            const chartHeight = 92;
                             const chartWidth = Math.max(1, (rangeSummary.days.length - 1) * 22);
                             const values = rangeSummary.days.map((day) => day.totalOutput);
                             const maxValue = Math.max(1, ...values);
@@ -472,9 +474,9 @@ export default function TrendsView({ data, showToast }) {
                     </div>
                 </div>
 
-                <div className="glass-card">
-                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Care Timeline</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="glass-card" style={compactCardStyle}>
+                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Care Timeline</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {rangeSummary.days.map((day) => (
                             <div
                                 key={day.dateKey}
@@ -482,7 +484,7 @@ export default function TrendsView({ data, showToast }) {
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    padding: '10px 0',
+                                    padding: '8px 0',
                                     borderBottom: '1px solid var(--glass-border)',
                                 }}
                             >

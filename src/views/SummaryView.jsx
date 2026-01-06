@@ -13,6 +13,7 @@ export default function SummaryView({ data, showToast }) {
     const [exporting, setExporting] = useState(false);
     const [exportingSchema, setExportingSchema] = useState(false);
     const { dailyTotals, getTotalsForDay, recordDailyTotal, refresh } = data;
+    const compactCardStyle = { marginBottom: 12 };
 
     const dayTotals = getTotalsForDay(selectedDate);
 
@@ -87,7 +88,7 @@ export default function SummaryView({ data, showToast }) {
 
             <div className="page__content">
                 {/* Day Picker */}
-                <div className="glass-card">
+                <div className="glass-card" style={compactCardStyle}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Icons.Calendar />
@@ -120,7 +121,7 @@ export default function SummaryView({ data, showToast }) {
                 </div>
 
                 {/* Summary Card */}
-                <div className="glass-card">
+                <div className="glass-card" style={compactCardStyle}>
                     <h2 className="section__title" style={{ fontSize: '18px', marginBottom: '16px' }}>
                         {new Date(selectedDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                     </h2>
@@ -165,8 +166,8 @@ export default function SummaryView({ data, showToast }) {
                 </div>
 
                 {/* End of Day Action */}
-                <div className="glass-card">
-                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>End of Day</h2>
+                <div className="glass-card" style={compactCardStyle}>
+                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>End of Day</h2>
                     <button className="liquid-button" onClick={handleRecordEndOfDay}>
                         <Icons.Check /> <span style={{ marginLeft: '8px' }}>Record Daily Totals</span>
                     </button>
@@ -176,7 +177,7 @@ export default function SummaryView({ data, showToast }) {
                 </div>
 
                 {/* Import / Export */}
-                <div className="glass-card">
+                <div className="glass-card" style={compactCardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                         <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}>
                             <Icons.Download />
@@ -212,8 +213,8 @@ export default function SummaryView({ data, showToast }) {
                 </div>
 
                 {/* Daily Totals History */}
-                <div className="glass-card">
-                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>History</h2>
+                <div className="glass-card" style={compactCardStyle}>
+                    <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>History</h2>
                     {dailyTotals.length === 0 ? (
                         <p className="text-dim" style={{ fontSize: '14px' }}>No recorded totals yet.</p>
                     ) : (
@@ -259,8 +260,8 @@ export default function SummaryView({ data, showToast }) {
             </AnimatePresence>
 
             {/* Settings */}
-            <div className="glass-card" style={{ marginTop: 16 }}>
-                <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Settings</h2>
+            <div className="glass-card" style={{ marginTop: 12 }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '10px' }}>Settings</h2>
                 <div style={{ display: 'grid', gap: '10px' }}>
                     <button
                         className="liquid-button liquid-button--secondary"
