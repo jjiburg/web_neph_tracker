@@ -602,12 +602,12 @@ body {
   z-index: 200;
   display: flex;
   align-items: flex-end;
-  padding-top: calc(var(--safe-top) + 16px);
+  padding-top: calc(var(--safe-top) + 64px);
 }
 
 .sheet {
   width: 100%;
-  max-height: calc(100vh - (var(--safe-top) + 24px));
+  max-height: calc(var(--vv-height, 100dvh) - (var(--safe-top) + 72px));
   background: var(--bg-surface);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
@@ -647,7 +647,7 @@ body {
 }
 
 .sheet__content {
-  padding: 0 var(--spacing-lg) calc(var(--spacing-lg) + var(--safe-bottom));
+  padding: 0 var(--spacing-lg) calc(var(--spacing-lg) + var(--safe-bottom) + var(--keyboard-height, 0px));
 }
 
 /* --- Toast --- */

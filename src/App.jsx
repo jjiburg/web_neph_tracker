@@ -38,6 +38,36 @@ export default function App() {
     const data = useData();
     const { toast, showToast } = useToast();
 
+    useEffect(() => {
+        const applyViewportVars = () => {
+            const root = document.documentElement;
+            const vv = window.visualViewport;
+            if (!vv) {
+                root.style.setProperty('--vv-height', `${window.innerHeight}px`);
+                root.style.setProperty('--vv-offset-top', `0px`);
+                root.style.setProperty('--keyboard-height', `0px`);
+                return;
+            }
+
+            const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+            root.style.setProperty('--vv-height', `${vv.height}px`);
+            root.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`);
+            root.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+        };
+
+        applyViewportVars();
+        window.addEventListener('resize', applyViewportVars);
+        window.addEventListener('orientationchange', applyViewportVars);
+        window.visualViewport?.addEventListener('resize', applyViewportVars);
+        window.visualViewport?.addEventListener('scroll', applyViewportVars);
+        return () => {
+            window.removeEventListener('resize', applyViewportVars);
+            window.removeEventListener('orientationchange', applyViewportVars);
+            window.visualViewport?.removeEventListener('resize', applyViewportVars);
+            window.visualViewport?.removeEventListener('scroll', applyViewportVars);
+        };
+    }, []);
+
     // Capacitor & Sync initialization
     useEffect(() => {
         const handleSyncStatus = (event) => {
