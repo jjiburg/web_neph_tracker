@@ -27,7 +27,7 @@
 	<key>NSSiriUsageDescription</key>
 	<string>Allow Siri to log intake entries in Output Tracker.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<true/>
+	<false/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
