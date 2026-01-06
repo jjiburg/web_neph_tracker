@@ -26,6 +26,8 @@
 	<string>Allow microphone access to use voice logging.</string>
 	<key>NSSiriUsageDescription</key>
 	<string>Allow Siri to log intake entries in Output Tracker.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
