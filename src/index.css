@@ -30,7 +30,7 @@
   /* Tracking Colors */
   --color-intake: var(--primary);
   --color-bag: var(--secondary);
-  --color-void: #34d399;
+  --color-void: #06b6d4;
 
   /* Spacing & Radius */
   --radius-sm: 12px;
@@ -286,6 +286,7 @@ body {
 .quick-stack {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-columns: minmax(0, 1fr);
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
 }
@@ -293,8 +294,17 @@ body {
 .quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-columns: minmax(0, 1fr);
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
+}
+
+.quick-stack .liquid-button,
+.quick-actions-grid .liquid-button {
+  width: 100%;
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 /* Chip Buttons */
