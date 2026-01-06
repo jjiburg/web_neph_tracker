@@ -444,7 +444,7 @@ export default function TrendsView({ data, showToast }) {
                                             )}
                                             <polyline
                                                 fill="none"
-                                                stroke="var(--primary)"
+                                                stroke="var(--color-bag)"
                                                 strokeWidth="2"
                                                 points={points}
                                             />
@@ -458,7 +458,7 @@ export default function TrendsView({ data, showToast }) {
                                                         cx={x}
                                                         cy={y}
                                                         r="3"
-                                                        fill={isLow ? '#f87171' : 'var(--primary)'}
+                                                        fill={isLow ? '#f87171' : 'var(--color-bag)'}
                                                     />
                                                 );
                                             })}

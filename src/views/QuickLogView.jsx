@@ -113,31 +113,45 @@ export default function QuickLogView({ data, showToast }) {
             <div className="glass-card">
                 <div className="quick-stack">
                     {[63, 236, 710].map(amt => (
-                        <button key={amt} className="liquid-button" onClick={() => handleAddEntry('intake', { amountMl: amt, timestamp: Date.now() })}>
+                        <button
+                            key={amt}
+                            className="liquid-button"
+                            style={{ whiteSpace: 'nowrap' }}
+                            onClick={() => handleAddEntry('intake', { amountMl: amt, timestamp: Date.now() })}
+                        >
                             +{amt} ml
                         </button>
                     ))}
                 </div>
                 <button
                     className="liquid-button secondary-action"
-                    style={{ minHeight: 38, padding: '10px 12px', fontSize: 13 }}
+                    style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
                     onClick={() => setSheet({ type: 'intake', quickAmounts: [63, 236, 710] })}
                 >
-                    Custom Amount...
+                    Custom
                 </button>
             </div>
 
             {/* Output */}
             <div className="section-header">
-                <span className="section-icon" style={{ color: 'var(--secondary)' }}><Icons.Beaker /></span>
+                <span className="section-icon" style={{ color: 'var(--color-bag)' }}><Icons.Beaker /></span>
                 <h2>Output</h2>
             </div>
             <div className="glass-card">
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, fontWeight: 500 }}>Nephrostomy Bag</div>
                 <div className="quick-actions-grid">
                     {[100, 200, 300].map(amt => (
-                        <button key={`bag-${amt}`} className="liquid-button--chip" onClick={() => handleAddEntry('output', { type: 'bag', amountMl: amt, timestamp: Date.now() })}>
-                            {amt} ml
+                        <button
+                            key={`bag-${amt}`}
+                            className="liquid-button"
+                            style={{
+                                background: 'var(--color-bag)',
+                                boxShadow: '0 6px 18px -4px rgba(129, 140, 248, 0.5)',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onClick={() => handleAddEntry('output', { type: 'bag', amountMl: amt, timestamp: Date.now() })}
+                        >
+                            +{amt} ml
                         </button>
                     ))}
                 </div>
@@ -146,14 +160,23 @@ export default function QuickLogView({ data, showToast }) {
                     style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
                     onClick={() => setSheet({ type: 'output', subType: 'bag', quickAmounts: [100, 200, 300, 400, 500] })}
                 >
-                    Custom...
+                    Custom
                 </button>
 
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, marginTop: 16, fontWeight: 500 }}>Normal Void</div>
                 <div className="quick-actions-grid">
                     {[25, 50, 100].map(amt => (
-                        <button key={`void-${amt}`} className="liquid-button--chip" onClick={() => handleAddEntry('output', { type: 'void', amountMl: amt, timestamp: Date.now() })}>
-                            {amt} ml
+                        <button
+                            key={`void-${amt}`}
+                            className="liquid-button"
+                            style={{
+                                background: 'var(--color-void)',
+                                boxShadow: '0 6px 18px -4px rgba(52, 211, 153, 0.45)',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onClick={() => handleAddEntry('output', { type: 'void', amountMl: amt, timestamp: Date.now() })}
+                        >
+                            +{amt} ml
                         </button>
                     ))}
                 </div>
@@ -162,7 +185,7 @@ export default function QuickLogView({ data, showToast }) {
                     style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
                     onClick={() => setSheet({ type: 'output', subType: 'void', quickAmounts: [25, 50, 100, 150, 200] })}
                 >
-                    Custom...
+                    Custom
                 </button>
             </div>
 

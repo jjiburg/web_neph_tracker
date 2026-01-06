@@ -28,8 +28,8 @@ export default function HistoryView({ data }) {
 
     const getIcon = (type) => {
         switch (type) {
-            case 'intake': return <Icons.Drop size={20} color="var(--primary)" />;
-            case 'output': return <Icons.Beaker size={20} color="var(--secondary)" />;
+            case 'intake': return <Icons.Drop size={20} color="var(--color-intake)" />;
+            case 'output': return <Icons.Beaker size={20} color="var(--color-bag)" />;
             case 'flush': return <Icons.Syringe size={20} color="var(--success)" />;
             case 'bowel': return <span style={{ fontSize: 18 }}>🧻</span>;
             case 'dressing': return <Icons.Bandage size={20} color="#a855f7" />;
