@@ -602,11 +602,12 @@ body {
   z-index: 200;
   display: flex;
   align-items: flex-end;
+  padding-top: calc(var(--safe-top) + 16px);
 }
 
 .sheet {
   width: 100%;
-  max-height: 90vh;
+  max-height: calc(100vh - (var(--safe-top) + 24px));
   background: var(--bg-surface);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
