@@ -85,22 +85,22 @@ export default function QuickLogView({ data, showToast }) {
 
             {/* Daily Snapshot */}
             <div className="glass-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>Daily Snapshot</span>
                     <Icons.Activity size={18} color="var(--primary)" />
                 </div>
-                <div className="stats-grid">
-                    <div className="stat-card">
-                        <div className="stat-card__label">In</div>
-                        <div className="stat-card__value text-accent">{data.todayIntakeMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
+                        <div className="stat-card__label" style={{ fontSize: 11 }}>In</div>
+                        <div className="stat-card__value text-accent" style={{ fontSize: 18 }}>{data.todayIntakeMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-card__label">Bag</div>
-                        <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>{data.todayBagMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
+                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
+                        <div className="stat-card__label" style={{ fontSize: 11 }}>Bag</div>
+                        <div className="stat-card__value" style={{ color: 'var(--secondary)', fontSize: 18 }}>{data.todayBagMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-card__label">Normal</div>
-                        <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>{data.todayUrinalMl || 0} <span style={{ fontSize: 14, fontWeight: 400 }}>ml</span></div>
+                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
+                        <div className="stat-card__label" style={{ fontSize: 11 }}>Normal</div>
+                        <div className="stat-card__value" style={{ color: 'var(--primary)', fontSize: 18 }}>{data.todayUrinalMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
                     </div>
                 </div>
             </div>

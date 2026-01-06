@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import QuickLogView from './views/QuickLogView';
 import HistoryView from './views/HistoryView';
 import SummaryView from './views/SummaryView';
+import TrendsView from './views/TrendsView';
 import AuthScreen from './components/AuthScreen';
 import DiagnosticsPanel from './components/DiagnosticsPanel';
 import { useData, useToast } from './hooks';
@@ -13,7 +14,8 @@ import { API_BASE, isNative, platform } from './config';
 const TABS = [
     { id: 'log', label: 'Log', icon: <Icons.Plus /> },
     { id: 'history', label: 'History', icon: <Icons.Clock /> },
-    { id: 'summary', label: 'Summary', icon: <Icons.Chart /> },
+    { id: 'summary', label: 'Summary', icon: <Icons.Calendar /> },
+    { id: 'trends', label: 'Trends', icon: <Icons.Chart /> },
 ];
 
 const SYNC_INTERVAL_MS = 10000;
@@ -134,6 +136,8 @@ export default function App() {
                 return <HistoryView data={data} showToast={showToast} />;
             case 'summary':
                 return <SummaryView data={data} showToast={showToast} />;
+            case 'trends':
+                return <TrendsView data={data} showToast={showToast} />;
             default:
                 return null;
         }
