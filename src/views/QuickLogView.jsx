@@ -171,7 +171,7 @@ export default function QuickLogView({ data, showToast }) {
                             className="liquid-button"
                             style={{
                                 background: 'var(--color-void)',
-                                boxShadow: '0 6px 18px -4px rgba(244, 114, 182, 0.45)',
+                                boxShadow: '0 6px 18px -4px rgba(20, 184, 166, 0.45)',
                                 whiteSpace: 'nowrap',
                             }}
                             onClick={() => handleAddEntry('output', { type: 'void', amountMl: amt, timestamp: Date.now() })}
