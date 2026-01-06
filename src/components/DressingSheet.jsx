@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { getLocalDateTimeInputValue } from '../utils/time';
-import { motion } from 'framer-motion';
+import { motion, useDragControls } from 'framer-motion';
 import { Icons } from './Icons';
 
 const DRESSING_STATES = ['Checked', 'Needs Changing', 'Changed Today'];
 
 export default function DressingSheet({ onSave, onClose, initialValues, mode = 'create' }) {
+    const dragControls = useDragControls();
     const [state, setState] = useState(initialValues?.state || 'Checked');
     const [note, setNote] = useState(initialValues?.note || '');
     const [timestamp, setTimestamp] = useState(
@@ -31,6 +32,8 @@ export default function DressingSheet({ onSave, onClose, initialValues, mode = '
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 drag="y"
+                dragControls={dragControls}
+                dragListener={false}
                 dragConstraints={{ top: 0, bottom: 0 }}
                 dragElastic={0.15}
                 onDragEnd={(_, info) => {
@@ -40,7 +43,10 @@ export default function DressingSheet({ onSave, onClose, initialValues, mode = '
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="sheet__handle" />
+                <div
+                    className="sheet__handle"
+                    onPointerDown={(event) => dragControls.start(event)}
+                />
                 <div className="sheet__header">
                     <span className="sheet__icon" style={{ color: '#a855f7' }}><Icons.Bandage /></span>
                     <h2 className="sheet__title">{mode === 'edit' ? 'Edit Dressing' : 'Dressing Check'}</h2>

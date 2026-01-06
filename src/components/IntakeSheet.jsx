@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { getLocalDateTimeInputValue } from '../utils/time';
-import { motion } from 'framer-motion';
+import { motion, useDragControls } from 'framer-motion';
 import { Icons } from './Icons';
 
 export default function IntakeSheet({ onSave, onClose, quickAmounts, initialValues, mode = 'create' }) {
+    const dragControls = useDragControls();
     const [amountMl, setAmountMl] = useState(initialValues?.amountMl ? String(initialValues.amountMl) : '');
     const [note, setNote] = useState(initialValues?.note || '');
     const [timestamp, setTimestamp] = useState(
@@ -30,6 +31,8 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts, initialValu
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 drag="y"
+                dragControls={dragControls}
+                dragListener={false}
                 dragConstraints={{ top: 0, bottom: 0 }}
                 dragElastic={0.15}
                 onDragEnd={(_, info) => {
@@ -39,7 +42,10 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts, initialValu
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="sheet__handle" />
+                <div
+                    className="sheet__handle"
+                    onPointerDown={(event) => dragControls.start(event)}
+                />
                 <div className="sheet__header">
                     <span className="sheet__icon text-accent"><Icons.Drop /></span>
                     <h2 className="sheet__title">{mode === 'edit' ? 'Edit Intake' : 'Log Intake'}</h2>
