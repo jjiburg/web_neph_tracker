@@ -17,6 +17,11 @@ import {
     deleteFlush,
     deleteBowel,
     deleteDressing,
+    updateIntake,
+    updateOutput,
+    updateFlush,
+    updateBowel,
+    updateDressing,
     isToday,
     isSameDay,
 } from './store';
@@ -141,6 +146,26 @@ export function useData() {
         },
         deleteDressingEntry: async (id) => {
             await deleteDressing(id);
+            refresh();
+        },
+        updateIntakeEntry: async (entry) => {
+            await updateIntake(entry);
+            refresh();
+        },
+        updateOutputEntry: async (entry) => {
+            await updateOutput(entry);
+            refresh();
+        },
+        updateFlushEntry: async (entry) => {
+            await updateFlush(entry);
+            refresh();
+        },
+        updateBowelEntry: async (entry) => {
+            await updateBowel(entry);
+            refresh();
+        },
+        updateDressingEntry: async (entry) => {
+            await updateDressing(entry);
             refresh();
         },
     };

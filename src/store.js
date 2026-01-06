@@ -73,6 +73,23 @@ async function updateEntry(storeName, entry) {
     return result;
 }
 
+async function updateEntryWithDefaults(storeName, entry) {
+    const db = await getDB();
+    const existing = await db.get(storeName, entry.id);
+    if (!existing) return null;
+    const now = Date.now();
+    const result = await db.put(storeName, {
+        ...existing,
+        ...entry,
+        updatedAt: now,
+        synced: false,
+        deleted: false,
+        deletedAt: null,
+    });
+    notifyChange();
+    return result;
+}
+
 async function deleteEntry(storeName, id) {
     const db = await getDB();
     const entry = await db.get(storeName, id);
@@ -117,6 +134,7 @@ export const addIntake = (amountMl, note = '', timestamp = Date.now()) =>
 export const getAllIntakes = () => getAllEntries(STORES.INTAKE);
 
 export const deleteIntake = (id) => deleteEntry(STORES.INTAKE, id);
+export const updateIntake = (entry) => updateEntryWithDefaults(STORES.INTAKE, entry);
 
 // Output
 export const addOutput = (type, amountMl, colorNote = '', symptoms = {}, otherNote = '', timestamp = Date.now()) =>
@@ -135,6 +153,10 @@ export const addOutput = (type, amountMl, colorNote = '', symptoms = {}, otherNo
 export const getAllOutputs = () => getAllEntries(STORES.OUTPUT);
 
 export const deleteOutput = (id) => deleteEntry(STORES.OUTPUT, id);
+export const updateOutput = (entry) => {
+    const type = entry.type ? (entry.type === 'void' ? 'urinal' : entry.type) : entry.type;
+    return updateEntryWithDefaults(STORES.OUTPUT, { ...entry, type });
+};
 
 // Flush
 export const addFlush = (amountMl = 30, note = '', timestamp = Date.now()) =>
@@ -143,6 +165,7 @@ export const addFlush = (amountMl = 30, note = '', timestamp = Date.now()) =>
 export const getAllFlushes = () => getAllEntries(STORES.FLUSH);
 
 export const deleteFlush = (id) => deleteEntry(STORES.FLUSH, id);
+export const updateFlush = (entry) => updateEntryWithDefaults(STORES.FLUSH, entry);
 
 // Bowel
 export const addBowel = (bristolScale = 0, note = '', timestamp = Date.now()) =>
@@ -151,6 +174,7 @@ export const addBowel = (bristolScale = 0, note = '', timestamp = Date.now()) =>
 export const getAllBowels = () => getAllEntries(STORES.BOWEL);
 
 export const deleteBowel = (id) => deleteEntry(STORES.BOWEL, id);
+export const updateBowel = (entry) => updateEntryWithDefaults(STORES.BOWEL, entry);
 
 // Dressing
 export const addDressing = (state = 'Checked', note = '', timestamp = Date.now()) =>
@@ -159,6 +183,7 @@ export const addDressing = (state = 'Checked', note = '', timestamp = Date.now()
 export const getAllDressings = () => getAllEntries(STORES.DRESSING);
 
 export const deleteDressing = (id) => deleteEntry(STORES.DRESSING, id);
+export const updateDressing = (entry) => updateEntryWithDefaults(STORES.DRESSING, entry);
 
 // Daily Totals
 export const addOrUpdateDailyTotal = async (dateStr, bagMl, urinalMl, intakeMl) => {

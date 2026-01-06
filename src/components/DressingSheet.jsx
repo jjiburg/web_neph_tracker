@@ -5,10 +5,12 @@ import { Icons } from './Icons';
 
 const DRESSING_STATES = ['Checked', 'Needs Changing', 'Changed Today'];
 
-export default function DressingSheet({ onSave, onClose }) {
-    const [state, setState] = useState('Checked');
-    const [note, setNote] = useState('');
-    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
+export default function DressingSheet({ onSave, onClose, initialValues, mode = 'create' }) {
+    const [state, setState] = useState(initialValues?.state || 'Checked');
+    const [note, setNote] = useState(initialValues?.note || '');
+    const [timestamp, setTimestamp] = useState(
+        getLocalDateTimeInputValue(initialValues?.timestamp ? new Date(initialValues.timestamp) : new Date())
+    );
 
     const handleSave = () => {
         onSave(state, note, new Date(timestamp).getTime());
@@ -33,7 +35,7 @@ export default function DressingSheet({ onSave, onClose }) {
                 <div className="sheet__handle" />
                 <div className="sheet__header">
                     <span className="sheet__icon" style={{ color: '#a855f7' }}><Icons.Bandage /></span>
-                    <h2 className="sheet__title">Dressing Check</h2>
+                    <h2 className="sheet__title">{mode === 'edit' ? 'Edit Dressing' : 'Dressing Check'}</h2>
                 </div>
 
                 <div className="sheet__content">
@@ -51,6 +53,20 @@ export default function DressingSheet({ onSave, onClose }) {
                                     {s}
                                 </button>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Time */}
+                    <div className="input-group">
+                        <label className="input-group__label">Time</label>
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Clock /></span>
+                            <input
+                                type="datetime-local"
+                                className="input"
+                                value={timestamp}
+                                onChange={(e) => setTimestamp(e.target.value)}
+                            />
                         </div>
                     </div>
 
@@ -75,7 +91,7 @@ export default function DressingSheet({ onSave, onClose }) {
                         onClick={handleSave}
                         style={{ marginTop: '8px', background: '#a855f7', boxShadow: '0 8px 24px -4px rgba(168, 85, 247, 0.4)' }}
                     >
-                        Save Check
+                        {mode === 'edit' ? 'Update Check' : 'Save Check'}
                     </button>
                 </div>
             </motion.div>

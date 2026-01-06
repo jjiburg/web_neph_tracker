@@ -3,10 +3,12 @@ import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
-export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
-    const [amountMl, setAmountMl] = useState('');
-    const [note, setNote] = useState('');
-    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
+export default function IntakeSheet({ onSave, onClose, quickAmounts, initialValues, mode = 'create' }) {
+    const [amountMl, setAmountMl] = useState(initialValues?.amountMl ? String(initialValues.amountMl) : '');
+    const [note, setNote] = useState(initialValues?.note || '');
+    const [timestamp, setTimestamp] = useState(
+        getLocalDateTimeInputValue(initialValues?.timestamp ? new Date(initialValues.timestamp) : new Date())
+    );
 
     const handleSave = () => {
         if (!amountMl || parseFloat(amountMl) <= 0) return;
@@ -32,7 +34,7 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
                 <div className="sheet__handle" />
                 <div className="sheet__header">
                     <span className="sheet__icon text-accent"><Icons.Drop /></span>
-                    <h2 className="sheet__title">Log Intake</h2>
+                    <h2 className="sheet__title">{mode === 'edit' ? 'Edit Intake' : 'Log Intake'}</h2>
                 </div>
 
                 <div className="sheet__content">
@@ -100,7 +102,7 @@ export default function IntakeSheet({ onSave, onClose, quickAmounts }) {
                         disabled={!amountMl || parseFloat(amountMl) <= 0}
                         style={{ marginTop: '8px' }}
                     >
-                        Save Entry
+                        {mode === 'edit' ? 'Update Entry' : 'Save Entry'}
                     </button>
                 </div>
             </motion.div>

@@ -3,12 +3,19 @@ import { getLocalDateTimeInputValue } from '../utils/time';
 import { motion } from 'framer-motion';
 import { Icons } from './Icons';
 
-export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
-    const [amountMl, setAmountMl] = useState('');
-    const [colorNote, setColorNote] = useState('');
-    const [otherNote, setOtherNote] = useState('');
-    const [symptoms, setSymptoms] = useState({ clots: false, pain: false, leakage: false, fever: false });
-    const [timestamp, setTimestamp] = useState(getLocalDateTimeInputValue());
+export default function OutputSheet({ type, onSave, onClose, quickAmounts, initialValues, mode = 'create' }) {
+    const [amountMl, setAmountMl] = useState(initialValues?.amountMl ? String(initialValues.amountMl) : '');
+    const [colorNote, setColorNote] = useState(initialValues?.colorNote || '');
+    const [otherNote, setOtherNote] = useState(initialValues?.otherNote || '');
+    const [symptoms, setSymptoms] = useState({
+        clots: Boolean(initialValues?.clots),
+        pain: Boolean(initialValues?.pain),
+        leakage: Boolean(initialValues?.leakage),
+        fever: Boolean(initialValues?.fever),
+    });
+    const [timestamp, setTimestamp] = useState(
+        getLocalDateTimeInputValue(initialValues?.timestamp ? new Date(initialValues.timestamp) : new Date())
+    );
 
     const toggleSymptom = (key) => {
         setSymptoms((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -38,7 +45,9 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
                 <div className="sheet__handle" />
                 <div className="sheet__header">
                     <span className="sheet__icon" style={{ color: 'var(--secondary)' }}><Icons.Beaker /></span>
-                    <h2 className="sheet__title">Log {type === 'bag' ? 'Bag' : 'Voided'}</h2>
+                    <h2 className="sheet__title">
+                        {mode === 'edit' ? 'Edit' : 'Log'} {type === 'bag' ? 'Bag' : 'Voided'}
+                    </h2>
                 </div>
 
                 <div className="sheet__content">
@@ -111,6 +120,20 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
                         </div>
                     </div>
 
+                    {/* Time */}
+                    <div className="input-group">
+                        <label className="input-group__label">Time</label>
+                        <div className="input-wrapper">
+                            <span className="input-icon"><Icons.Clock /></span>
+                            <input
+                                type="datetime-local"
+                                className="input"
+                                value={timestamp}
+                                onChange={(e) => setTimestamp(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
                     {/* Save */}
                     <button
                         className="liquid-button liquid-button--secondary"
@@ -118,7 +141,7 @@ export default function OutputSheet({ type, onSave, onClose, quickAmounts }) {
                         disabled={!amountMl || parseFloat(amountMl) <= 0}
                         style={{ marginTop: '8px' }}
                     >
-                        Save Entry
+                        {mode === 'edit' ? 'Update Entry' : 'Save Entry'}
                     </button>
                 </div>
             </motion.div>
