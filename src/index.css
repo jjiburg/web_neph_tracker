@@ -603,6 +603,7 @@ body {
   display: flex;
   align-items: flex-end;
   padding-top: calc(var(--safe-top) + 64px);
+  padding-bottom: var(--keyboard-height, 0px);
 }
 
 .sheet {
@@ -647,7 +648,7 @@ body {
 }
 
 .sheet__content {
-  padding: 0 var(--spacing-lg) calc(var(--spacing-lg) + var(--safe-bottom) + var(--keyboard-height, 0px));
+  padding: 0 var(--spacing-lg) calc(var(--spacing-lg) + var(--safe-bottom) + 12px);
 }
 
 /* --- Toast --- */

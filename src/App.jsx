@@ -68,6 +68,23 @@ export default function App() {
         };
     }, []);
 
+    useEffect(() => {
+        const handleFocusIn = (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+            const sheet = target.closest?.('.sheet');
+            if (!sheet) return;
+            setTimeout(() => {
+                try {
+                    target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+                } catch { }
+            }, 50);
+        };
+        document.addEventListener('focusin', handleFocusIn);
+        return () => document.removeEventListener('focusin', handleFocusIn);
+    }, []);
+
     // Capacitor & Sync initialization
     useEffect(() => {
         const handleSyncStatus = (event) => {
