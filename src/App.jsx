@@ -69,6 +69,15 @@ export default function App() {
     }, []);
 
     useEffect(() => {
+        if (!navigator.storage?.persist) return;
+        navigator.storage.persist().then((granted) => {
+            if (!granted) {
+                console.warn('[STORAGE] Persistent storage not granted');
+            }
+        }).catch(() => { });
+    }, []);
+
+    useEffect(() => {
         const handleFocusIn = (event) => {
             const target = event.target;
             if (!(target instanceof HTMLElement)) return;

@@ -3,6 +3,8 @@ import { openDB } from 'idb';
 
 const DB_NAME = 'nephtrack';
 const DB_VERSION = 1;
+const FALLBACK_KEY = 'nephtrack-fallback-queue';
+const FALLBACK_LIMIT_PER_STORE = 200;
 
 const STORES = {
     INTAKE: 'intake',
@@ -14,10 +16,150 @@ const STORES = {
 };
 
 let dbPromise = null;
+let flushingQueue = false;
 
 function notifyChange() {
     if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('nephtrack-local-change'));
+    }
+}
+
+function canUseLocalStorage() {
+    return typeof localStorage !== 'undefined';
+}
+
+function normalizeFallbackMap(map) {
+    if (!map || typeof map !== 'object') return {};
+    const normalized = {};
+    const validStores = new Set(Object.values(STORES));
+    Object.entries(map).forEach(([storeName, entries]) => {
+        if (!validStores.has(storeName)) return;
+        let list = [];
+        if (Array.isArray(entries)) {
+            list = entries;
+        } else if (entries && typeof entries === 'object') {
+            list = Object.values(entries);
+        }
+        const filtered = list.filter((entry) => entry && entry.id);
+        if (filtered.length === 0) return;
+        filtered.sort(
+            (a, b) =>
+                (a.updatedAt || a.timestamp || 0) -
+                (b.updatedAt || b.timestamp || 0),
+        );
+        const trimmed = filtered.slice(-FALLBACK_LIMIT_PER_STORE);
+        const storeMap = {};
+        trimmed.forEach((entry) => {
+            storeMap[entry.id] = entry;
+        });
+        normalized[storeName] = storeMap;
+    });
+    return normalized;
+}
+
+function loadFallbackMap() {
+    if (!canUseLocalStorage()) return {};
+    try {
+        const raw = localStorage.getItem(FALLBACK_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return normalizeFallbackMap(parsed);
+    } catch {
+        return {};
+    }
+}
+
+function saveFallbackMap(map) {
+    if (!canUseLocalStorage()) return;
+    try {
+        const normalized = normalizeFallbackMap(map);
+        localStorage.setItem(FALLBACK_KEY, JSON.stringify(normalized));
+    } catch (err) {
+        console.error('Failed to persist fallback queue', err);
+    }
+}
+
+function getFallbackEntries(storeName) {
+    const map = loadFallbackMap();
+    return Object.values(map[storeName] || {});
+}
+
+function upsertFallbackEntry(storeName, record) {
+    const map = loadFallbackMap();
+    const storeMap = map[storeName] || {};
+    storeMap[record.id] = { ...record, queued: true };
+    map[storeName] = storeMap;
+    saveFallbackMap(map);
+    return storeMap[record.id];
+}
+
+function removeFallbackEntry(storeName, id) {
+    const map = loadFallbackMap();
+    const storeMap = map[storeName];
+    if (!storeMap || !storeMap[id]) return false;
+    delete storeMap[id];
+    if (Object.keys(storeMap).length === 0) {
+        delete map[storeName];
+    } else {
+        map[storeName] = storeMap;
+    }
+    saveFallbackMap(map);
+    return true;
+}
+
+function updateFallbackEntry(storeName, entry) {
+    const map = loadFallbackMap();
+    const storeMap = map[storeName];
+    if (!storeMap || !storeMap[entry.id]) return null;
+    const now = Date.now();
+    const updated = {
+        ...storeMap[entry.id],
+        ...entry,
+        updatedAt: now,
+        synced: false,
+        deleted: false,
+        deletedAt: null,
+        queued: true,
+    };
+    storeMap[entry.id] = updated;
+    map[storeName] = storeMap;
+    saveFallbackMap(map);
+    return updated;
+}
+
+async function flushFallbackQueue(db) {
+    if (flushingQueue) return;
+    const map = loadFallbackMap();
+    const storeNames = Object.keys(map);
+    if (storeNames.length === 0) return;
+    flushingQueue = true;
+    let changed = false;
+    try {
+        for (const storeName of storeNames) {
+            if (!db.objectStoreNames.contains(storeName)) continue;
+            const entries = Object.values(map[storeName] || {});
+            if (entries.length === 0) {
+                delete map[storeName];
+                continue;
+            }
+            try {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                entries.forEach((entry) => {
+                    store.put({ ...entry, queued: false });
+                });
+                await tx.done;
+                delete map[storeName];
+                changed = true;
+            } catch {
+                // Keep entries for next retry.
+            }
+        }
+        if (changed) {
+            saveFallbackMap(map);
+            notifyChange();
+        }
+    } finally {
+        flushingQueue = false;
     }
 }
 
@@ -36,6 +178,9 @@ function getDB() {
                     }
                 });
             },
+        }).then(async (db) => {
+            await flushFallbackQueue(db);
+            return db;
         });
     }
     return dbPromise;
@@ -43,7 +188,6 @@ function getDB() {
 
 // Generic CRUD operations
 async function addEntry(storeName, entry) {
-    const db = await getDB();
     const id = window.crypto.randomUUID();
     const now = Date.now();
     const record = {
@@ -55,15 +199,54 @@ async function addEntry(storeName, entry) {
         deletedAt: null,
         synced: false,
     };
-    await db.add(storeName, record);
-    notifyChange();
-    return id;
+    try {
+        const db = await getDB();
+        await db.add(storeName, record);
+        notifyChange();
+        return id;
+    } catch (err) {
+        try {
+            dbPromise = null;
+            const db = await getDB();
+            await db.add(storeName, record);
+            notifyChange();
+            return id;
+        } catch (err2) {
+            const queued = upsertFallbackEntry(storeName, record);
+            if (queued) {
+                notifyChange();
+                return id;
+            }
+            throw err2;
+        }
+    }
 }
 
 async function getAllEntries(storeName) {
-    const db = await getDB();
-    const entries = await db.getAllFromIndex(storeName, 'timestamp');
-    return entries.filter((entry) => !entry.deleted);
+    let entries = [];
+    try {
+        const db = await getDB();
+        entries = await db.getAllFromIndex(storeName, 'timestamp');
+    } catch (err) {
+        try {
+            dbPromise = null;
+            const db = await getDB();
+            entries = await db.getAllFromIndex(storeName, 'timestamp');
+        } catch (err2) {
+            console.error('Failed to read from IndexedDB, using fallback queue', err2);
+        }
+    }
+    const queued = getFallbackEntries(storeName);
+    const seen = new Map();
+    entries.forEach((entry) => seen.set(entry.id, entry));
+    queued.forEach((entry) => {
+        if (!seen.has(entry.id)) {
+            seen.set(entry.id, entry);
+        }
+    });
+    return Array.from(seen.values())
+        .filter((entry) => !entry.deleted)
+        .sort((a, b) => a.timestamp - b.timestamp);
 }
 
 async function updateEntry(storeName, entry) {
@@ -74,36 +257,56 @@ async function updateEntry(storeName, entry) {
 }
 
 async function updateEntryWithDefaults(storeName, entry) {
-    const db = await getDB();
-    const existing = await db.get(storeName, entry.id);
-    if (!existing) return null;
-    const now = Date.now();
-    const result = await db.put(storeName, {
-        ...existing,
-        ...entry,
-        updatedAt: now,
-        synced: false,
-        deleted: false,
-        deletedAt: null,
-    });
-    notifyChange();
-    return result;
+    try {
+        const db = await getDB();
+        const existing = await db.get(storeName, entry.id);
+        if (!existing) {
+            const updated = updateFallbackEntry(storeName, entry);
+            if (updated) notifyChange();
+            return updated;
+        }
+        const now = Date.now();
+        const result = await db.put(storeName, {
+            ...existing,
+            ...entry,
+            updatedAt: now,
+            synced: false,
+            deleted: false,
+            deletedAt: null,
+        });
+        notifyChange();
+        return result;
+    } catch (err) {
+        const updated = updateFallbackEntry(storeName, entry);
+        if (updated) notifyChange();
+        return updated;
+    }
 }
 
 async function deleteEntry(storeName, id) {
-    const db = await getDB();
-    const entry = await db.get(storeName, id);
-    if (!entry) return;
-    const now = Date.now();
-    const result = await db.put(storeName, {
-        ...entry,
-        deleted: true,
-        deletedAt: now,
-        updatedAt: now,
-        synced: false,
-    });
-    notifyChange();
-    return result;
+    try {
+        const db = await getDB();
+        const entry = await db.get(storeName, id);
+        if (!entry) {
+            const removed = removeFallbackEntry(storeName, id);
+            if (removed) notifyChange();
+            return;
+        }
+        const now = Date.now();
+        const result = await db.put(storeName, {
+            ...entry,
+            deleted: true,
+            deletedAt: now,
+            updatedAt: now,
+            synced: false,
+        });
+        notifyChange();
+        return result;
+    } catch (err) {
+        const removed = removeFallbackEntry(storeName, id);
+        if (removed) notifyChange();
+        return;
+    }
 }
 
 // Helper: Get entries for a specific day
