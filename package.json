@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:local": "vite build --mode local",
+    "build:prod": "vite build --mode production",
     "preview": "vite preview",
     "cap:init": "cap init \"Output Tracker\" com.nephtrack.app --web-dir dist",
     "cap:open:ios": "cap open ios",
