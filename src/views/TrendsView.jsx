@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { formatMl } from '../store';
 import { Icons } from '../components/Icons';
 import { API_BASE, isNative } from '../config';
+import { Clipboard } from '@capacitor/clipboard';
 
 export default function TrendsView({ data, showToast }) {
     const [rangePreset, setRangePreset] = useState('7d');
@@ -71,9 +72,20 @@ export default function TrendsView({ data, showToast }) {
     }, [range]);
 
     const copyToClipboard = async (text) => {
-        if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text);
-            return true;
+        if (isNative) {
+            try {
+                await Clipboard.write({ string: text });
+                return true;
+            } catch (error) {
+                console.warn('[Export] Native clipboard failed, falling back.', error);
+            }
+        } else if (navigator.clipboard?.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                console.warn('[Export] Clipboard API failed, falling back.', error);
+            }
         }
         const textarea = document.createElement('textarea');
         textarea.value = text;

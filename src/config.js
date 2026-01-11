@@ -1,17 +1,19 @@
 // API Configuration with Diagnostics
 import { Capacitor } from '@capacitor/core';
 
-// Your Railway deployment URL (can be overridden via VITE_API_BASE)
+// Your Railway deployment URL (can be overridden via VITE_PRODUCTION_API)
 const DEFAULT_PRODUCTION_API = 'https://output-tracker-production.up.railway.app';
+const ENV_MODE = typeof import.meta !== 'undefined' ? import.meta.env?.MODE : '';
 const ENV_API_BASE = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_BASE : '';
-const PRODUCTION_API = ENV_API_BASE || DEFAULT_PRODUCTION_API;
+const ENV_PRODUCTION_API = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_PRODUCTION_API : '';
+const PRODUCTION_API = ENV_PRODUCTION_API || DEFAULT_PRODUCTION_API;
 
 // Platform detection
 export const isNative = Capacitor.isNativePlatform();
 export const platform = Capacitor.getPlatform(); // 'ios', 'android', or 'web'
 
-// Use production API when running in native app, relative path for web
-export const API_BASE = isNative ? PRODUCTION_API : '';
+// Use local API only in dev builds; production native builds always hit Railway.
+export const API_BASE = isNative ? (ENV_MODE === 'development' ? (ENV_API_BASE || PRODUCTION_API) : PRODUCTION_API) : '';
 
 export const getApiUrl = (path) => `${API_BASE}${path}`;
 
@@ -138,5 +140,5 @@ export async function runDiagnostics() {
 // Export for global access in console
 if (typeof window !== 'undefined') {
     window.runDiagnostics = runDiagnostics;
-    window.API_CONFIG = { API_BASE, isNative, platform, PRODUCTION_API };
+    window.API_CONFIG = { API_BASE, isNative, platform, PRODUCTION_API, ENV_MODE };
 }

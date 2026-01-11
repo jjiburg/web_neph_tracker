@@ -6,6 +6,7 @@ import DiagnosticsPanel from '../components/DiagnosticsPanel';
 import { Icons } from '../components/Icons';
 import { exportBackup, exportSchemaDefinition } from '../import';
 import { isNative } from '../config';
+import { Clipboard } from '@capacitor/clipboard';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -56,9 +57,20 @@ export default function SummaryView({ data, showToast }) {
     };
 
     const copyToClipboard = async (text) => {
-        if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text);
-            return true;
+        if (isNative) {
+            try {
+                await Clipboard.write({ string: text });
+                return true;
+            } catch (error) {
+                console.warn('[Export] Native clipboard failed, falling back.', error);
+            }
+        } else if (navigator.clipboard?.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                console.warn('[Export] Clipboard API failed, falling back.', error);
+            }
         }
         const textarea = document.createElement('textarea');
         textarea.value = text;
