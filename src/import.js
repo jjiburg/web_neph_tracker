@@ -7,8 +7,8 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'nephtrack';
-const DB_VERSION = 1;
-const STORE_NAMES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
+const DB_VERSION = 2;
+const STORE_NAMES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals', 'goals'];
 const COMMON_FIELDS = ['id', 'timestamp', 'updatedAt', 'deleted', 'deletedAt', 'synced'];
 const STORE_FIELDS = {
     intake: ['amountMl', 'note'],
@@ -17,6 +17,7 @@ const STORE_FIELDS = {
     bowel: ['bristolScale', 'note'],
     dressing: ['state', 'note'],
     dailyTotals: ['date', 'bagMl', 'urinalMl', 'totalMl', 'intakeMl'],
+    goals: ['intakeMl', 'outputMl'],
 };
 const DEFAULT_VALUES = {
     id: 'uuid',
@@ -41,6 +42,7 @@ const DEFAULT_VALUES = {
     urinalMl: 0,
     totalMl: 0,
     intakeMl: 0,
+    outputMl: 0,
 };
 
 async function getDB() {
@@ -125,7 +127,8 @@ export async function importBackup(jsonString, replaceExisting = false) {
             flushes: 0,
             bowelMovements: 0,
             dressings: 0,
-            dailyTotals: 0
+            dailyTotals: 0,
+            goals: 0,
         };
 
         // Import Intakes
@@ -251,6 +254,24 @@ export async function importBackup(jsonString, replaceExisting = false) {
             await tx.done;
         }
 
+        if (payload.goals && Array.isArray(payload.goals)) {
+            const tx = db.transaction('goals', 'readwrite');
+            for (const item of payload.goals) {
+                await tx.store.add({
+                    id: crypto.randomUUID(),
+                    intakeMl: item.intakeMl ?? null,
+                    outputMl: item.outputMl ?? null,
+                    timestamp: new Date(item.timestamp).getTime(),
+                    updatedAt: new Date(item.timestamp).getTime(),
+                    deleted: false,
+                    deletedAt: null,
+                    synced: false
+                });
+                counts.goals++;
+            }
+            await tx.done;
+        }
+
         const totalImported = Object.values(counts).reduce((a, b) => a + b, 0);
         return {
             success: true,
@@ -274,6 +295,7 @@ async function importWebBackup(payload, db) {
         bowelMovements: 0,
         dressings: 0,
         dailyTotals: 0,
+        goals: 0,
     };
 
     const normalizeOutputType = (type) => (type === 'void' ? 'urinal' : type);
@@ -384,6 +406,25 @@ async function importWebBackup(payload, db) {
                 synced: false,
             });
             counts.dailyTotals++;
+        }
+        await tx.done;
+    }
+
+    if (Array.isArray(data.goals)) {
+        const tx = db.transaction('goals', 'readwrite');
+        for (const item of data.goals) {
+            await tx.store.put({
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                intakeMl: item.intakeMl ?? null,
+                outputMl: item.outputMl ?? null,
+                timestamp: item.timestamp || now,
+                updatedAt: item.updatedAt || item.timestamp || now,
+                deleted: false,
+                deletedAt: null,
+                synced: false,
+            });
+            counts.goals++;
         }
         await tx.done;
     }

@@ -39,6 +39,22 @@ export default function HistoryView({ data }) {
 
     const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const formatDate = (ts) => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const symptomLabels = {
+        clots: 'Clots',
+        pain: 'Pain',
+        leakage: 'Leakage',
+        fever: 'Fever',
+    };
+    const getEntryIndicators = (entry) => {
+        const symptoms = entry.storeName === 'output'
+            ? Object.keys(symptomLabels).filter((key) => entry[key])
+            : [];
+        const noteText = entry.note || entry.otherNote || entry.colorNote || '';
+        return {
+            symptoms,
+            noteText,
+        };
+    };
 
     const handleDelete = async (entry) => {
         if (!window.confirm('Delete this entry?')) return;
@@ -64,7 +80,7 @@ export default function HistoryView({ data }) {
     };
 
     return (
-        <div className="view-content">
+        <div className="view-content compact-page">
             <header className="screen-header">
                 <div>
                     <h1 className="screen-header__title">History</h1>
@@ -112,6 +128,54 @@ export default function HistoryView({ data }) {
                                         {entry.type ? ` (${entry.type})` : ''}
                                         {(entry.note || entry.otherNote) ? ` · ${entry.note || entry.otherNote}` : ''}
                                     </div>
+                                    {(() => {
+                                        const { symptoms, noteText } = getEntryIndicators(entry);
+                                        if (symptoms.length === 0 && !noteText) return null;
+                                        const noteLabel = entry.note || entry.otherNote
+                                            ? 'Note'
+                                            : entry.colorNote
+                                                ? `Color: ${entry.colorNote}`
+                                                : 'Note';
+                                        const badgeStyle = {
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            padding: '4px 8px',
+                                            borderRadius: 999,
+                                            background: 'rgba(255,255,255,0.08)',
+                                            border: '1px solid var(--glass-border)',
+                                            fontSize: 11,
+                                            color: 'var(--text-dim)',
+                                        };
+                                        const textStyle = {
+                                            maxWidth: 160,
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                        };
+                                        return (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                                                {noteText && (
+                                                    <div style={badgeStyle}>
+                                                        <span style={{ color: 'var(--text-secondary)', display: 'flex' }}>
+                                                            <Icons.Paperclip />
+                                                        </span>
+                                                        <span style={textStyle}>{noteLabel}</span>
+                                                    </div>
+                                                )}
+                                                {symptoms.length > 0 && (
+                                                    <div style={badgeStyle}>
+                                                        <span style={{ color: '#fca5a5', display: 'flex' }}>
+                                                            <Icons.AlertCircle />
+                                                        </span>
+                                                        <span style={textStyle}>
+                                                            Symptoms: {symptoms.map((symptom) => symptomLabels[symptom]).join(', ')}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                     <div className="history-item__time">{formatTime(entry.timestamp)}</div>

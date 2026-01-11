@@ -16,6 +16,32 @@ export default function SummaryView({ data, showToast }) {
     const compactCardStyle = { marginBottom: 12 };
 
     const dayTotals = getTotalsForDay(selectedDate);
+    const activeGoals = data.getGoalForDate(selectedDate);
+    const hasGoals = Boolean(activeGoals?.intakeMl || activeGoals?.outputMl);
+    const totalOutput = dayTotals.bagMl + dayTotals.urinalMl;
+
+    const renderGoalRow = (label, current, goal, color) => {
+        if (!goal) return null;
+        const progress = Math.min(1, current / goal);
+        const remaining = goal - current;
+        const status = remaining > 0
+            ? `${formatMl(remaining)} to go`
+            : remaining === 0
+                ? 'Goal met'
+                : `Over by ${formatMl(Math.abs(remaining))}`;
+        return (
+            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                    <span style={{ fontWeight: 600 }}>{label}</span>
+                    <span className="text-dim">{formatMl(current)} / {formatMl(goal)}</span>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${progress * 100}%`, background: color, borderRadius: 999 }} />
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-dim)' }}>{status}</div>
+            </div>
+        );
+    };
 
     const handleRecordEndOfDay = async () => {
         await recordDailyTotal(selectedDate, dayTotals.bagMl, dayTotals.urinalMl, dayTotals.intakeMl);
@@ -78,7 +104,7 @@ export default function SummaryView({ data, showToast }) {
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
     return (
-        <div className="page">
+        <div className="page compact-page">
             <header className="screen-header">
                 <div>
                     <h1 className="screen-header__title">Summary</h1>
@@ -138,7 +164,7 @@ export default function SummaryView({ data, showToast }) {
                         <div className="stat-card">
                             <div className="stat-card__label">Total Output</div>
                             <div className="stat-card__value" style={{ color: 'var(--secondary)' }}>
-                                {formatMl(dayTotals.bagMl + dayTotals.urinalMl)}
+                                {formatMl(totalOutput)}
                             </div>
                         </div>
                         <div className="stat-card">
@@ -148,6 +174,13 @@ export default function SummaryView({ data, showToast }) {
                             </div>
                         </div>
                     </div>
+
+                    {hasGoals && (
+                        <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
+                            {renderGoalRow('Intake goal', dayTotals.intakeMl, activeGoals?.intakeMl, 'var(--color-intake)')}
+                            {renderGoalRow('Output goal', totalOutput, activeGoals?.outputMl, 'var(--color-bag)')}
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                         <div style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', textAlign: 'center' }}>

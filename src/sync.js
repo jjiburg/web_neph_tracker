@@ -3,7 +3,7 @@ import { encryptData, decryptData } from './encryption';
 import { openDB } from 'idb';
 import { API_BASE } from './config';
 
-const STORES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals'];
+const STORES = ['intake', 'output', 'flush', 'bowel', 'dressing', 'dailyTotals', 'goals'];
 const SYNC_PAUSED_KEY = 'syncPaused';
 const STORE_ALIASES = {
     bag: 'output',
@@ -17,6 +17,8 @@ const STORE_ALIASES = {
     dailyTotal: 'dailyTotals',
     daily_total: 'dailyTotals',
     dailytotals: 'dailyTotals',
+    goals: 'goals',
+    goal: 'goals',
 };
 const SYNC_CURSOR_KEY = 'lastSyncCursor';
 const SYNC_STATUS_KEY = 'syncStatus';

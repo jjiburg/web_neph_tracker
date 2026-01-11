@@ -6,12 +6,14 @@ import {
     getAllBowels,
     getAllDressings,
     getAllDailyTotals,
+    getAllGoals,
     addIntake,
     addOutput,
     addFlush,
     addBowel,
     addDressing,
     addOrUpdateDailyTotal,
+    addGoal,
     deleteIntake,
     deleteOutput,
     deleteFlush,
@@ -26,6 +28,32 @@ import {
     isSameDay,
 } from './store';
 
+const GOALS_KEY = 'nephtrack-daily-goals';
+
+const normalizeGoalValue = (value) => {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number <= 0) return null;
+    return Math.round(number);
+};
+
+const normalizeLegacyGoals = (goals) => ({
+    intakeMl: normalizeGoalValue(goals?.intakeMl),
+    outputMl: normalizeGoalValue(goals?.outputMl),
+});
+
+const loadLegacyGoals = () => {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(GOALS_KEY);
+        if (!raw) return null;
+        const parsed = normalizeLegacyGoals(JSON.parse(raw));
+        if (!parsed.intakeMl && !parsed.outputMl) return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
 // Hook for loading and managing all data
 export function useData() {
     const [intakes, setIntakes] = useState([]);
@@ -34,16 +62,18 @@ export function useData() {
     const [bowels, setBowels] = useState([]);
     const [dressings, setDressings] = useState([]);
     const [dailyTotals, setDailyTotals] = useState([]);
+    const [goals, setGoals] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const refresh = useCallback(async () => {
-        const [i, o, f, b, d, dt] = await Promise.all([
+        const [i, o, f, b, d, dt, g] = await Promise.all([
             getAllIntakes(),
             getAllOutputs(),
             getAllFlushes(),
             getAllBowels(),
             getAllDressings(),
             getAllDailyTotals(),
+            getAllGoals(),
         ]);
         setIntakes(i.reverse());
         setOutputs(o.reverse());
@@ -51,12 +81,26 @@ export function useData() {
         setBowels(b.reverse());
         setDressings(d.reverse());
         setDailyTotals(dt);
+        setGoals(g);
         setLoading(false);
     }, []);
 
     useEffect(() => {
         refresh();
     }, [refresh]);
+
+    useEffect(() => {
+        const maybeMigrate = async () => {
+            if (loading) return;
+            if (goals.length > 0) return;
+            const legacy = loadLegacyGoals();
+            if (!legacy) return;
+            await addGoal(legacy.intakeMl, legacy.outputMl, Date.now());
+            localStorage.removeItem(GOALS_KEY);
+            refresh();
+        };
+        maybeMigrate();
+    }, [goals.length, loading, refresh]);
 
     // Today's totals
     const todayIntakes = intakes.filter((e) => isToday(e.timestamp));
@@ -68,6 +112,37 @@ export function useData() {
         .filter((e) => e.type === 'urinal' || e.type === 'void')
         .reduce((sum, e) => sum + e.amountMl, 0);
     const todayTotalOutputMl = todayBagMl + todayUrinalMl;
+
+    const getGoalForDate = (date) => {
+        if (!goals.length) return null;
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        const sorted = [...goals].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        let matched = null;
+        for (const entry of sorted) {
+            if ((entry.timestamp || 0) <= endOfDay.getTime()) {
+                matched = entry;
+            } else {
+                break;
+            }
+        }
+        if (!matched) {
+            matched = sorted[0];
+        }
+        if (!matched) return null;
+        if (matched.intakeMl == null && matched.outputMl == null) return null;
+        return {
+            intakeMl: matched.intakeMl ?? null,
+            outputMl: matched.outputMl ?? null,
+            timestamp: matched.timestamp,
+        };
+    };
+
+    const getLatestGoal = () => {
+        if (!goals.length) return null;
+        const sorted = [...goals].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        return sorted[sorted.length - 1];
+    };
 
     // Totals for a specific day
     const getTotalsForDay = (date) => {
@@ -96,6 +171,7 @@ export function useData() {
         bowels,
         dressings,
         dailyTotals,
+        goals,
         loading,
         refresh,
         todayIntakeMl,
@@ -103,6 +179,8 @@ export function useData() {
         todayUrinalMl,
         todayTotalOutputMl,
         getTotalsForDay,
+        getGoalForDate,
+        getLatestGoal,
         // Actions
         logIntake: async (amountMl, note = '', timestamp = Date.now()) => {
             await addIntake(amountMl, note, timestamp);
@@ -126,6 +204,10 @@ export function useData() {
         },
         recordDailyTotal: async (date, bagMl, urinalMl, intakeMl) => {
             await addOrUpdateDailyTotal(date, bagMl, urinalMl, intakeMl);
+            refresh();
+        },
+        setGoals: async (intakeMl, outputMl, timestamp = Date.now()) => {
+            await addGoal(intakeMl, outputMl, timestamp);
             refresh();
         },
         deleteIntakeEntry: async (id) => {

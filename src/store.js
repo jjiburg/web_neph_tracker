@@ -2,7 +2,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'nephtrack';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const FALLBACK_KEY = 'nephtrack-fallback-queue';
 const FALLBACK_LIMIT_PER_STORE = 200;
 
@@ -13,6 +13,7 @@ const STORES = {
     BOWEL: 'bowel',
     DRESSING: 'dressing',
     DAILY_TOTALS: 'dailyTotals',
+    GOALS: 'goals',
 };
 
 let dbPromise = null;
@@ -430,6 +431,14 @@ export const getAllDailyTotals = async () => {
 };
 
 export const deleteDailyTotal = (id) => deleteEntry(STORES.DAILY_TOTALS, id);
+
+// Goals (timestamped history)
+export const addGoal = (intakeMl, outputMl, timestamp = Date.now()) =>
+    addEntry(STORES.GOALS, { intakeMl, outputMl, timestamp });
+
+export const getAllGoals = () => getAllEntries(STORES.GOALS);
+
+export const deleteGoal = (id) => deleteEntry(STORES.GOALS, id);
 
 // Utilities
 export { isToday, isSameDay };

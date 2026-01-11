@@ -1,8 +1,10 @@
 // API Configuration with Diagnostics
 import { Capacitor } from '@capacitor/core';
 
-// Your Railway deployment URL
-const PRODUCTION_API = 'https://output-tracker-production.up.railway.app';
+// Your Railway deployment URL (can be overridden via VITE_API_BASE)
+const DEFAULT_PRODUCTION_API = 'https://output-tracker-production.up.railway.app';
+const ENV_API_BASE = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_BASE : '';
+const PRODUCTION_API = ENV_API_BASE || DEFAULT_PRODUCTION_API;
 
 // Platform detection
 export const isNative = Capacitor.isNativePlatform();

@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react';
 import { formatMl } from '../store';
 import { Icons } from '../components/Icons';
+import { API_BASE } from '../config';
 
 export default function TrendsView({ data, showToast }) {
     const [rangePreset, setRangePreset] = useState('7d');
+    const [aiInsight, setAiInsight] = useState(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState('');
+    const [aiExpanded, setAiExpanded] = useState(false);
     const [customStart, setCustomStart] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() - 6);
@@ -26,8 +31,14 @@ export default function TrendsView({ data, showToast }) {
 
     const range = useMemo(() => {
         const now = new Date();
-        if (rangePreset === '12h' || rangePreset === '1d' || rangePreset === '2d') {
-            const hours = rangePreset === '12h' ? 12 : rangePreset === '2d' ? 48 : 24;
+        const hourPresets = {
+            '8h': 8,
+            '12h': 12,
+            '1d': 24,
+            '2d': 48,
+        };
+        const hours = hourPresets[rangePreset];
+        if (hours) {
             const start = new Date(now.getTime() - hours * 60 * 60 * 1000);
             return { start, end: now, usesHours: true };
         }
@@ -122,6 +133,7 @@ export default function TrendsView({ data, showToast }) {
     const rangeSummary = useMemo(() => {
         const days = rangeDays.map((day) => {
             const key = toDateKey(day);
+            const goal = data.getGoalForDate(key);
             const summary = daySummaries.get(key) || {
                 dateKey: key,
                 intakeMl: 0,
@@ -136,6 +148,8 @@ export default function TrendsView({ data, showToast }) {
                 totalOutput: summary.bagMl + summary.voidMl,
                 netMl: summary.bagMl + summary.voidMl - summary.intakeMl,
                 date: day,
+                goalIntakeMl: goal?.intakeMl ?? null,
+                goalOutputMl: goal?.outputMl ?? null,
             };
         });
         const totals = days.reduce(
@@ -157,9 +171,186 @@ export default function TrendsView({ data, showToast }) {
             return values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
         })();
         return { days, totals, median };
-    }, [rangeDays, daySummaries]);
+    }, [rangeDays, daySummaries, data]);
+
+    const goalSummary = useMemo(() => {
+        const days = rangeSummary.days;
+        const totalDays = days.length;
+        const intakeDays = days.filter((day) => day.goalIntakeMl);
+        const outputDays = days.filter((day) => day.goalOutputMl);
+        const intakeMet = intakeDays.length
+            ? intakeDays.filter((day) => day.intakeMl >= day.goalIntakeMl).length
+            : null;
+        const outputMet = outputDays.length
+            ? outputDays.filter((day) => day.totalOutput >= day.goalOutputMl).length
+            : null;
+        if (intakeMet === null && outputMet === null) return null;
+        return { totalDays, intakeMet, outputMet };
+    }, [rangeSummary.days]);
 
     const compactCardStyle = { marginBottom: 12 };
+
+    const rangeGoalTotals = useMemo(() => {
+        const totals = rangeSummary.days.reduce(
+            (acc, day) => {
+                if (day.goalIntakeMl) {
+                    acc.intakeGoalTotal += day.goalIntakeMl;
+                    acc.intakeGoalDays += 1;
+                }
+                if (day.goalOutputMl) {
+                    acc.outputGoalTotal += day.goalOutputMl;
+                    acc.outputGoalDays += 1;
+                }
+                return acc;
+            },
+            { intakeGoalTotal: 0, outputGoalTotal: 0, intakeGoalDays: 0, outputGoalDays: 0 }
+        );
+        return totals;
+    }, [rangeSummary.days]);
+
+    const renderTargetRow = (label, current, goalTotal, color, meta) => {
+        const hasGoal = Number.isFinite(goalTotal) && goalTotal > 0;
+        const progress = hasGoal ? Math.min(1, current / goalTotal) : (current > 0 ? 1 : 0);
+        const remaining = hasGoal ? goalTotal - current : null;
+        const status = hasGoal
+            ? (remaining > 0
+                ? `${formatMl(remaining)} to go`
+                : remaining === 0
+                    ? 'Target met'
+                    : `Over by ${formatMl(Math.abs(remaining))}`)
+            : 'No target set';
+        return (
+            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14, border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, gap: 8 }}>
+                    <span style={{ fontWeight: 600 }}>{label}</span>
+                    <span style={{ color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                        {hasGoal ? `${formatMl(current)} / ${formatMl(goalTotal)}` : `Current ${formatMl(current)}`}
+                    </span>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 999, overflow: 'hidden' }}>
+                    {meta?.segments ? (
+                        <div style={{ display: 'flex', height: '100%', width: `${progress * 100}%`, opacity: hasGoal ? 1 : 0.5 }}>
+                            {meta.segments.map((segment) => (
+                                <div
+                                    key={segment.key}
+                                    style={{ width: `${segment.percent * 100}%`, background: segment.color }}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ height: '100%', width: `${progress * 100}%`, background: color, borderRadius: 999, opacity: hasGoal ? 1 : 0.5 }} />
+                    )}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-dim)' }}>{status}</div>
+            </div>
+        );
+    };
+
+    const buildInsightsPayload = () => {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        return {
+            scope: 'range',
+            range: {
+                start: toDateKey(range.start),
+                end: toDateKey(range.end),
+                timezone,
+            },
+            totals: rangeSummary.totals,
+            days: rangeSummary.days.map((day) => ({
+                date: day.dateKey,
+                intakeMl: day.intakeMl,
+                bagMl: day.bagMl,
+                voidMl: day.voidMl,
+                totalOutputMl: day.totalOutput,
+                netMl: day.netMl,
+                flushCount: day.flushCount,
+                bowelCount: day.bowelCount,
+                dressingState: day.dressingState || null,
+                goals: {
+                    intakeMl: day.goalIntakeMl,
+                    outputMl: day.goalOutputMl,
+                }
+            })),
+            goalHistory: (data.goals || []).map((goal) => ({
+                intakeMl: goal.intakeMl ?? null,
+                outputMl: goal.outputMl ?? null,
+                timestamp: goal.timestamp,
+            })),
+        };
+    };
+
+    const handleRangeInsights = async () => {
+        if (aiLoading) return;
+        setAiLoading(true);
+        setAiError('');
+        try {
+            const payload = buildInsightsPayload();
+            const response = await fetch(`${API_BASE}/api/insights`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                let message = `Request failed (${response.status})`;
+                try {
+                    const errorBody = await response.json();
+                    message = errorBody.error || message;
+                } catch { }
+                throw new Error(message);
+            }
+            const result = await response.json();
+            if (!result.insight || typeof result.insight !== 'object') {
+                throw new Error('No insights returned');
+            }
+            setAiInsight(result.insight);
+            setAiExpanded(true);
+        } catch (error) {
+            setAiError(error.message);
+            showToast('AI insight failed');
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const insightSections = aiInsight
+        ? [
+            { key: 'highlights', title: 'Highlights', items: aiInsight.highlights || [] },
+            { key: 'patterns', title: 'Patterns', items: aiInsight.patterns || [] },
+            { key: 'nextActions', title: 'Next Actions', items: aiInsight.nextActions || [] },
+        ]
+        : [];
+
+    const severityStyles = {
+        info: { dot: 'rgba(56,189,248,0.9)', text: 'var(--text-main)' },
+        warning: { dot: 'rgba(251,191,36,0.95)', text: '#fde68a' },
+        urgent: { dot: 'rgba(248,113,113,0.95)', text: '#fecaca' },
+    };
+
+    const renderInsightItem = (item) => {
+        const severity = severityStyles[item.severity] ? item.severity : 'info';
+        const style = severityStyles[severity];
+        return (
+            <div
+                key={`${item.title}-${item.detail}`}
+                style={{
+                    display: 'flex',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 14,
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--glass-border)',
+                }}
+            >
+                <div style={{ width: 10, display: 'flex', justifyContent: 'center', paddingTop: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: style.dot, boxShadow: `0 0 10px ${style.dot}` }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: style.text }}>{item.title}</div>
+                    <div className="text-dim" style={{ fontSize: 12, marginTop: 3, whiteSpace: 'pre-wrap' }}>{item.detail}</div>
+                </div>
+            </div>
+        );
+    };
 
     const handleExportReport = async (format) => {
         try {
@@ -236,7 +427,7 @@ export default function TrendsView({ data, showToast }) {
     };
 
     return (
-        <div className="page">
+        <div className="page compact-page">
             <header className="screen-header">
                 <div>
                     <h1 className="screen-header__title">Trends</h1>
@@ -251,7 +442,7 @@ export default function TrendsView({ data, showToast }) {
                     </h2>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                        {['12h', '1d', '2d', '7d', '14d', '30d', 'custom'].map((preset) => (
+                        {['8h', '12h', '1d', '2d', '7d', '14d', '30d', 'custom'].map((preset) => (
                             <button
                                 key={preset}
                                 className={`filter-chip ${rangePreset === preset ? 'active' : ''}`}
@@ -297,25 +488,138 @@ export default function TrendsView({ data, showToast }) {
                         </div>
                     )}
 
-                    <div style={{ display: 'grid', gap: '10px', marginBottom: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
-                        <div className="stat-card" style={{ padding: '12px' }}>
-                            <div className="stat-card__label">Range Intake</div>
-                            <div className="stat-card__value" style={{ color: 'var(--color-intake)' }}>
-                                {formatMl(rangeSummary.totals.intakeMl)}
-                            </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginBottom: 10 }}>
+                        {renderTargetRow(
+                            'Intake',
+                            rangeSummary.totals.intakeMl,
+                            rangeGoalTotals.intakeGoalTotal,
+                            'var(--color-intake)'
+                        )}
+                        {renderTargetRow(
+                            'Output',
+                            rangeSummary.totals.totalOutput,
+                            rangeGoalTotals.outputGoalTotal,
+                            'var(--color-bag)',
+                            {
+                                segments: (() => {
+                                    const total = rangeSummary.totals.totalOutput || 0;
+                                    if (total <= 0) {
+                                        return [{ key: 'bag', percent: 1, color: 'var(--color-bag)' }];
+                                    }
+                                    const bagPercent = (rangeSummary.totals.bagMl || 0) / total;
+                                    const voidPercent = (rangeSummary.totals.voidMl || 0) / total;
+                                    const safeBag = Math.max(0, Math.min(1, bagPercent));
+                                    const safeVoid = Math.max(0, Math.min(1, voidPercent));
+                                    return [
+                                        { key: 'bag', percent: safeBag, color: 'var(--color-bag)' },
+                                        { key: 'void', percent: safeVoid, color: 'var(--color-void)' },
+                                    ];
+                                })()
+                            }
+                        )}
+                    </div>
+                    {goalSummary && (
+                        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>
+                            {[
+                                goalSummary.intakeMet !== null
+                                    ? `Intake goal met ${goalSummary.intakeMet}/${goalSummary.totalDays} days`
+                                    : null,
+                                goalSummary.outputMet !== null
+                                    ? `Output goal met ${goalSummary.outputMet}/${goalSummary.totalDays} days`
+                                    : null,
+                            ].filter(Boolean).join(' · ')}
                         </div>
-                        <div className="stat-card" style={{ padding: '12px' }}>
-                            <div className="stat-card__label">Range Output</div>
-                            <div className="stat-card__value" style={{ color: 'var(--color-bag)' }}>
-                                {formatMl(rangeSummary.totals.totalOutput)}
+                    )}
+
+                    <div style={{ marginTop: 4, marginBottom: 12, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: '1px solid var(--glass-border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>
+                                    AI Insights
+                                </div>
+                                <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
+                                    {aiInsight?.headline || 'Analyze patterns for the selected range'}
+                                </div>
                             </div>
+                            <button
+                                className="liquid-button--chip"
+                                onClick={() => {
+                                    if (aiInsight) {
+                                        setAiExpanded((prev) => !prev);
+                                        return;
+                                    }
+                                    handleRangeInsights();
+                                }}
+                                disabled={aiLoading}
+                                style={{
+                                    width: 36,
+                                    height: 32,
+                                    padding: 0,
+                                    color: aiLoading ? 'var(--text-dim)' : 'var(--primary)',
+                                    borderColor: 'var(--primary)',
+                                    flexShrink: 0,
+                                }}
+                                aria-label="Toggle AI insights"
+                            >
+                                <span
+                                    style={{
+                                        display: 'inline-flex',
+                                        transform: aiExpanded ? 'rotate(-90deg)' : 'rotate(90deg)',
+                                        transition: 'transform 0.2s ease',
+                                    }}
+                                >
+                                    <Icons.ChevronRight />
+                                </span>
+                            </button>
                         </div>
-                        <div className="stat-card" style={{ padding: '12px' }}>
-                            <div className="stat-card__label">Net</div>
-                            <div className="stat-card__value" style={{ fontSize: 20 }}>
-                                {formatMl(rangeSummary.totals.totalOutput - rangeSummary.totals.intakeMl)}
+
+                        {aiError && (
+                            <div style={{ marginTop: 10, fontSize: 12, color: '#fca5a5' }}>
+                                {aiError}
                             </div>
-                        </div>
+                        )}
+
+                        {aiExpanded && (
+                            <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                                {insightSections
+                                    .filter((section) => Array.isArray(section.items) && section.items.length > 0)
+                                    .map((section) => (
+                                        <div key={section.key}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-accent)', marginBottom: 8 }}>
+                                                {section.title}
+                                            </div>
+                                            <div style={{ display: 'grid', gap: 8 }}>
+                                                {section.items.map((item) => renderInsightItem(item))}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                {Array.isArray(aiInsight?.questions) && aiInsight.questions.length > 0 && (
+                                    <div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-accent)', marginBottom: 8 }}>
+                                            Quick Questions
+                                        </div>
+                                        <div style={{ display: 'grid', gap: 8 }}>
+                                            {aiInsight.questions.slice(0, 2).map((question) => (
+                                                <div
+                                                    key={question}
+                                                    style={{
+                                                        padding: '10px 12px',
+                                                        borderRadius: 14,
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        border: '1px solid var(--glass-border)',
+                                                        fontSize: 12,
+                                                        color: 'var(--text-dim)',
+                                                    }}
+                                                >
+                                                    {question}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ marginBottom: '8px' }}>

@@ -65,11 +65,21 @@ The app includes a voice command feature using Gemini Flash 2.5:
 
 Backend: `server/gemini.js` → `/api/voice` endpoint
 
+## AI Insights
+
+The app includes an AI insights feature for the daily tracker session:
+- **AI button** on QuickLogView Daily Snapshot
+- Sends today's entries, daily goals, and current time-of-day
+- Returns concise insights plus goal progress assessment
+
+Backend: `server/gemini.js` → `/api/insights` endpoint
+
 ## Capacitor iOS
 
 The iOS app is generated via Capacitor:
 - **Project location**: `ios/App/Output Tracker.xcworkspace` (open this in Xcode)
 - **API configuration**: `src/config.js` detects native platform and uses production API
+  - Override with `VITE_API_BASE` at build time (e.g. `VITE_API_BASE=http://localhost:5173`)
 - **CORS**: Server configured to accept `capacitor://localhost` origin
 
 **Important for Capacitor:**
@@ -110,6 +120,7 @@ src/
 └── components/
     ├── AuthScreen.jsx     # Login/register
     ├── Icons.jsx          # Centralized SVG icons
+    ├── GoalSheet.jsx      # Daily goals modal
     ├── VoiceButton.jsx    # Voice input with VAD
     ├── DiagnosticsPanel.jsx # Network diagnostics
     ├── ImportSheet.jsx
@@ -139,6 +150,7 @@ The app implements iOS 26 "Liquid Glass" aesthetics:
 - **BowelEntry**: bristolScale, timestamp, note
 - **DressingEntry**: state, timestamp, note
 - **DailyTotal**: date, bagMl, urinalMl, totalMl, intakeMl
+- **GoalEntry**: intakeMl, outputMl, timestamp (goal history)
 
 ## API Endpoints
 - `GET /api/health` - Health check for diagnostics
@@ -147,6 +159,7 @@ The app implements iOS 26 "Liquid Glass" aesthetics:
 - `POST /api/sync/push` - Push encrypted entries (requires auth)
 - `GET /api/sync/pull` - Pull encrypted entries (requires auth)
 - `POST /api/voice` - Voice command parsing via Gemini
+- `POST /api/insights` - Daily AI insights via Gemini
 
 ---
 

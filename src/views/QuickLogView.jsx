@@ -1,15 +1,281 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Icons } from '../components/Icons';
+import { formatMl, isToday } from '../store';
+import { API_BASE } from '../config';
 import IntakeSheet from '../components/IntakeSheet';
 import OutputSheet from '../components/OutputSheet';
 import FlushSheet from '../components/FlushSheet';
 import BowelSheet from '../components/BowelSheet';
 import DressingSheet from '../components/DressingSheet';
 import VoiceButton from '../components/VoiceButton';
+import GoalSheet from '../components/GoalSheet';
 
 export default function QuickLogView({ data, showToast }) {
     const [sheet, setSheet] = useState(null);
+    const [showGoals, setShowGoals] = useState(false);
+    const [aiInsight, setAiInsight] = useState(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState('');
+    const [aiExpanded, setAiExpanded] = useState(false);
+    const now = new Date();
+    const todayKey = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+    const activeGoals = data.getGoalForDate(todayKey);
+    const hasGoals = Boolean(activeGoals?.intakeMl || activeGoals?.outputMl);
+
+    const renderGoalRow = (label, current, goal, color, meta) => {
+        const hasGoal = Number.isFinite(goal) && goal > 0;
+        const progress = hasGoal ? Math.min(1, current / goal) : (current > 0 ? 1 : 0);
+        const remaining = hasGoal ? goal - current : null;
+        const status = hasGoal
+            ? (remaining > 0
+                ? `${formatMl(remaining)} to go`
+                : remaining === 0
+                    ? 'Goal met'
+                    : `Over by ${formatMl(Math.abs(remaining))}`)
+            : 'No goal set';
+        return (
+            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14, border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, gap: 8 }}>
+                    <span style={{ fontWeight: 600 }}>{label}</span>
+                    <span style={{ color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                        {hasGoal ? `${formatMl(current)} / ${formatMl(goal)}` : `Current ${formatMl(current)}`}
+                    </span>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 999, overflow: 'hidden' }}>
+                    {meta?.segments ? (
+                        <div style={{ display: 'flex', height: '100%', width: `${progress * 100}%`, opacity: hasGoal ? 1 : 0.5 }}>
+                            {meta.segments.map((segment) => (
+                                <div
+                                    key={segment.key}
+                                    style={{ width: `${segment.percent * 100}%`, background: segment.color }}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ height: '100%', width: `${progress * 100}%`, background: color, borderRadius: 999, opacity: hasGoal ? 1 : 0.5 }} />
+                    )}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-dim)' }}>{status}</div>
+            </div>
+        );
+    };
+
+    const getTodayEntries = (items) => items.filter((entry) => isToday(entry.timestamp));
+
+    const summarizeGaps = (timestamps) => {
+        if (timestamps.length < 2) return { maxGapMinutes: null, lastGapMinutes: null };
+        const sorted = [...timestamps].sort((a, b) => a - b);
+        let maxGap = 0;
+        for (let i = 1; i < sorted.length; i += 1) {
+            maxGap = Math.max(maxGap, sorted[i] - sorted[i - 1]);
+        }
+        const lastGap = sorted[sorted.length - 1] - sorted[sorted.length - 2];
+        return { maxGapMinutes: Math.round(maxGap / 60000), lastGapMinutes: Math.round(lastGap / 60000) };
+    };
+
+    const computeProjection = (actualMl, dayProgress) => {
+        if (!dayProgress || dayProgress < 0.05) return null;
+        if (actualMl <= 0) return 0;
+        return Math.round(actualMl / dayProgress);
+    };
+
+    const buildInsightsPayload = () => {
+        const now = new Date();
+        const minutesElapsed = now.getHours() * 60 + now.getMinutes();
+        const dayProgress = minutesElapsed / 1440;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        const todayIntakes = getTodayEntries(data.intakes);
+        const todayOutputs = getTodayEntries(data.outputs);
+        const todayFlushes = getTodayEntries(data.flushes);
+        const todayBowels = getTodayEntries(data.bowels);
+        const todayDressings = getTodayEntries(data.dressings);
+
+        const expectedIntakeByNow = activeGoals?.intakeMl ? Math.round(activeGoals.intakeMl * dayProgress) : null;
+        const expectedOutputByNow = activeGoals?.outputMl ? Math.round(activeGoals.outputMl * dayProgress) : null;
+
+        const dateKey = [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, '0'),
+            String(now.getDate()).padStart(2, '0'),
+        ].join('-');
+
+        const intakeTimestamps = todayIntakes.map((e) => e.timestamp).filter(Boolean);
+        const outputTimestamps = todayOutputs.map((e) => e.timestamp).filter(Boolean);
+        const flushTimestamps = todayFlushes.map((e) => e.timestamp).filter(Boolean);
+        const symptomCounts = todayOutputs.reduce(
+            (acc, entry) => {
+                if (entry.clots) acc.clots += 1;
+                if (entry.pain) acc.pain += 1;
+                if (entry.leakage) acc.leakage += 1;
+                if (entry.fever) acc.fever += 1;
+                return acc;
+            },
+            { clots: 0, pain: 0, leakage: 0, fever: 0 }
+        );
+
+        const projectionIntakeMl = computeProjection(data.todayIntakeMl || 0, dayProgress);
+        const projectionOutputMl = computeProjection(data.todayTotalOutputMl || 0, dayProgress);
+
+        return {
+            scope: 'daily',
+            date: dateKey,
+            now: now.toISOString(),
+            localTime: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            timezone,
+            dayProgress,
+            goals: {
+                intakeMl: activeGoals?.intakeMl || null,
+                outputMl: activeGoals?.outputMl || null,
+            },
+            targets: {
+                expectedIntakeByNow,
+                expectedOutputByNow,
+            },
+            projections: {
+                projectedIntakeMl: projectionIntakeMl,
+                projectedOutputMl: projectionOutputMl,
+            },
+            totals: {
+                intakeMl: data.todayIntakeMl || 0,
+                bagMl: data.todayBagMl || 0,
+                voidMl: data.todayUrinalMl || 0,
+                outputMl: data.todayTotalOutputMl || 0,
+                flushCount: todayFlushes.length,
+                bowelCount: todayBowels.length,
+                dressingState: todayDressings[0]?.state || null,
+            },
+            computed: {
+                intakeEvents: todayIntakes.length,
+                outputEvents: todayOutputs.length,
+                lastIntakeMinutesAgo: intakeTimestamps.length
+                    ? Math.round((Date.now() - Math.max(...intakeTimestamps)) / 60000)
+                    : null,
+                lastOutputMinutesAgo: outputTimestamps.length
+                    ? Math.round((Date.now() - Math.max(...outputTimestamps)) / 60000)
+                    : null,
+                lastFlushMinutesAgo: flushTimestamps.length
+                    ? Math.round((Date.now() - Math.max(...flushTimestamps)) / 60000)
+                    : null,
+                intakeGaps: summarizeGaps(intakeTimestamps),
+                outputGaps: summarizeGaps(outputTimestamps),
+                symptoms: symptomCounts,
+            },
+            entries: {
+                intakes: todayIntakes.map((entry) => ({
+                    amountMl: entry.amountMl,
+                    note: entry.note || '',
+                    timestamp: entry.timestamp,
+                })),
+                outputs: todayOutputs.map((entry) => ({
+                    type: entry.type,
+                    amountMl: entry.amountMl,
+                    colorNote: entry.colorNote || '',
+                    otherNote: entry.otherNote || '',
+                    symptoms: {
+                        clots: Boolean(entry.clots),
+                        pain: Boolean(entry.pain),
+                        leakage: Boolean(entry.leakage),
+                        fever: Boolean(entry.fever),
+                    },
+                    timestamp: entry.timestamp,
+                })),
+                flushes: todayFlushes.map((entry) => ({
+                    amountMl: entry.amountMl,
+                    note: entry.note || '',
+                    timestamp: entry.timestamp,
+                })),
+                bowels: todayBowels.map((entry) => ({
+                    bristolScale: entry.bristolScale,
+                    note: entry.note || '',
+                    timestamp: entry.timestamp,
+                })),
+                dressings: todayDressings.map((entry) => ({
+                    state: entry.state,
+                    note: entry.note || '',
+                    timestamp: entry.timestamp,
+                })),
+            },
+        };
+    };
+
+    const handleAiInsights = async () => {
+        if (aiLoading) return;
+        setAiLoading(true);
+        setAiError('');
+        try {
+            const payload = buildInsightsPayload();
+            const response = await fetch(`${API_BASE}/api/insights`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                let message = `Request failed (${response.status})`;
+                try {
+                    const errorBody = await response.json();
+                    message = errorBody.error || message;
+                } catch { }
+                throw new Error(message);
+            }
+            const result = await response.json();
+            if (!result.insight || typeof result.insight !== 'object') {
+                throw new Error('No insights returned');
+            }
+            setAiInsight(result.insight);
+            setAiExpanded(true);
+        } catch (error) {
+            setAiError(error.message);
+            showToast('AI insight failed');
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const insightSections = aiInsight
+        ? [
+            { key: 'highlights', title: 'Highlights', items: aiInsight.highlights || [] },
+            { key: 'patterns', title: 'Patterns', items: aiInsight.patterns || [] },
+            { key: 'nextActions', title: 'Next Actions', items: aiInsight.nextActions || [] },
+        ]
+        : [];
+
+    const severityStyles = {
+        info: { dot: 'rgba(56,189,248,0.9)', text: 'var(--text-main)' },
+        warning: { dot: 'rgba(251,191,36,0.95)', text: '#fde68a' },
+        urgent: { dot: 'rgba(248,113,113,0.95)', text: '#fecaca' },
+    };
+
+    const renderInsightItem = (item) => {
+        const severity = severityStyles[item.severity] ? item.severity : 'info';
+        const style = severityStyles[severity];
+        return (
+            <div
+                key={`${item.title}-${item.detail}`}
+                style={{
+                    display: 'flex',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 14,
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--glass-border)',
+                }}
+            >
+                <div style={{ width: 10, display: 'flex', justifyContent: 'center', paddingTop: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: style.dot, boxShadow: `0 0 10px ${style.dot}` }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: style.text }}>{item.title}</div>
+                    <div className="text-dim" style={{ fontSize: 12, marginTop: 3, whiteSpace: 'pre-wrap' }}>{item.detail}</div>
+                </div>
+            </div>
+        );
+    };
 
     const handleAddEntry = async (storeName, entryData) => {
         try {
@@ -81,27 +347,136 @@ export default function QuickLogView({ data, showToast }) {
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
+                <button
+                    className={`liquid-button--chip screen-header__action ${hasGoals ? 'active' : ''}`}
+                    onClick={() => setShowGoals(true)}
+                >
+                    <Icons.Target />
+                    Goals
+                </button>
             </header>
 
             {/* Daily Snapshot */}
             <div className="glass-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>Daily Snapshot</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>Target</span>
                     <Icons.Activity size={18} color="var(--primary)" />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
-                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
-                        <div className="stat-card__label" style={{ fontSize: 11 }}>In</div>
-                        <div className="stat-card__value" style={{ fontSize: 18, color: 'var(--color-intake)' }}>{data.todayIntakeMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 4 }}>
+                    {renderGoalRow('Intake', data.todayIntakeMl || 0, activeGoals?.intakeMl, 'var(--color-intake)')}
+                    {renderGoalRow(
+                        'Output',
+                        data.todayTotalOutputMl || 0,
+                        activeGoals?.outputMl,
+                        'var(--color-bag)',
+                        {
+                            segments: (() => {
+                                const total = data.todayTotalOutputMl || 0;
+                                if (total <= 0) {
+                                    return [{ key: 'bag', percent: 1, color: 'var(--color-bag)' }];
+                                }
+                                const bagPercent = (data.todayBagMl || 0) / total;
+                                const voidPercent = (data.todayUrinalMl || 0) / total;
+                                const safeBag = Math.max(0, Math.min(1, bagPercent));
+                                const safeVoid = Math.max(0, Math.min(1, voidPercent));
+                                return [
+                                    { key: 'bag', percent: safeBag, color: 'var(--color-bag)' },
+                                    { key: 'void', percent: safeVoid, color: 'var(--color-void)' },
+                                ];
+                            })()
+                        }
+                    )}
+                </div>
+
+                <div style={{ marginTop: 10, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: '1px solid var(--glass-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>
+                                AI Insights
+                            </div>
+                            <div className="text-dim" style={{ fontSize: 12, marginTop: 2 }}>
+                                {aiInsight?.headline || (hasGoals ? 'Tap to analyze today + goal pace' : 'Tap to analyze today (set goals for pacing)')}
+                            </div>
+                        </div>
+                        <button
+                            className="liquid-button--chip"
+                            onClick={() => {
+                                if (aiInsight) {
+                                    setAiExpanded((prev) => !prev);
+                                    return;
+                                }
+                                handleAiInsights();
+                            }}
+                            disabled={aiLoading}
+                            style={{
+                                width: 36,
+                                height: 32,
+                                padding: 0,
+                                color: aiLoading ? 'var(--text-dim)' : 'var(--primary)',
+                                borderColor: 'var(--primary)',
+                                flexShrink: 0,
+                            }}
+                            aria-label="Toggle AI insights"
+                        >
+                            <span
+                                style={{
+                                    display: 'inline-flex',
+                                    transform: aiExpanded ? 'rotate(-90deg)' : 'rotate(90deg)',
+                                    transition: 'transform 0.2s ease',
+                                }}
+                            >
+                                <Icons.ChevronRight />
+                            </span>
+                        </button>
                     </div>
-                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
-                        <div className="stat-card__label" style={{ fontSize: 11 }}>Bag</div>
-                        <div className="stat-card__value" style={{ color: 'var(--color-bag)', fontSize: 18 }}>{data.todayBagMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
-                    </div>
-                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 14 }}>
-                        <div className="stat-card__label" style={{ fontSize: 11 }}>Normal</div>
-                        <div className="stat-card__value" style={{ color: 'var(--color-void)', fontSize: 18 }}>{data.todayUrinalMl || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>ml</span></div>
-                    </div>
+
+                    {aiError && (
+                        <div style={{ marginTop: 10, fontSize: 12, color: '#fca5a5' }}>
+                            {aiError}
+                        </div>
+                    )}
+
+                    {aiExpanded && (
+                        <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                            {insightSections
+                                .filter((section) => Array.isArray(section.items) && section.items.length > 0)
+                                .map((section) => (
+                                    <div key={section.key}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-accent)', marginBottom: 8 }}>
+                                            {section.title}
+                                        </div>
+                                        <div style={{ display: 'grid', gap: 8 }}>
+                                            {section.items.map((item) => renderInsightItem(item))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                            {Array.isArray(aiInsight?.questions) && aiInsight.questions.length > 0 && (
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-accent)', marginBottom: 8 }}>
+                                        Quick Questions
+                                    </div>
+                                    <div style={{ display: 'grid', gap: 8 }}>
+                                        {aiInsight.questions.slice(0, 2).map((question) => (
+                                            <div
+                                                key={question}
+                                                style={{
+                                                    padding: '10px 12px',
+                                                    borderRadius: 14,
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    fontSize: 12,
+                                                    color: 'var(--text-dim)',
+                                                }}
+                                            >
+                                                {question}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -122,14 +497,14 @@ export default function QuickLogView({ data, showToast }) {
                             +{amt} ml
                         </button>
                     ))}
+                    <button
+                        className="liquid-button secondary-action"
+                        style={{ whiteSpace: 'nowrap' }}
+                        onClick={() => setSheet({ type: 'intake', quickAmounts: [63, 236, 710] })}
+                    >
+                        Custom
+                    </button>
                 </div>
-                <button
-                    className="liquid-button secondary-action"
-                    style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
-                    onClick={() => setSheet({ type: 'intake', quickAmounts: [63, 236, 710] })}
-                >
-                    Custom
-                </button>
             </div>
 
             {/* Output */}
@@ -154,14 +529,14 @@ export default function QuickLogView({ data, showToast }) {
                             +{amt} ml
                         </button>
                     ))}
+                    <button
+                        className="liquid-button secondary-action"
+                        style={{ whiteSpace: 'nowrap' }}
+                        onClick={() => setSheet({ type: 'output', subType: 'bag', quickAmounts: [100, 200, 300, 400, 500] })}
+                    >
+                        Custom
+                    </button>
                 </div>
-                <button
-                    className="liquid-button secondary-action"
-                    style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
-                    onClick={() => setSheet({ type: 'output', subType: 'bag', quickAmounts: [100, 200, 300, 400, 500] })}
-                >
-                    Custom
-                </button>
 
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, marginTop: 16, fontWeight: 500 }}>Normal Void</div>
                 <div className="quick-actions-grid">
@@ -179,14 +554,14 @@ export default function QuickLogView({ data, showToast }) {
                             +{amt} ml
                         </button>
                     ))}
+                    <button
+                        className="liquid-button secondary-action"
+                        style={{ whiteSpace: 'nowrap' }}
+                        onClick={() => setSheet({ type: 'output', subType: 'void', quickAmounts: [25, 50, 100, 150, 200] })}
+                    >
+                        Custom
+                    </button>
                 </div>
-                <button
-                    className="liquid-button secondary-action"
-                    style={{ minHeight: 36, padding: '8px 12px', fontSize: 12 }}
-                    onClick={() => setSheet({ type: 'output', subType: 'void', quickAmounts: [25, 50, 100, 150, 200] })}
-                >
-                    Custom
-                </button>
             </div>
 
             {/* Flush & Bowel Row */}
@@ -225,9 +600,6 @@ export default function QuickLogView({ data, showToast }) {
             {/* Voice Button */}
             <VoiceButton onCommand={handleVoiceCommand} showToast={showToast} />
 
-            {/* Bottom spacer */}
-            <div style={{ height: 80 }} />
-
             {/* Sheets */}
             <AnimatePresence>
                 {sheet?.type === 'intake' && (
@@ -244,6 +616,17 @@ export default function QuickLogView({ data, showToast }) {
                 )}
                 {sheet?.type === 'dressing' && (
                     <DressingSheet onSave={(state, note, ts) => handleSave('dressing', { state, note, timestamp: ts })} onClose={() => setSheet(null)} />
+                )}
+                {showGoals && (
+                    <GoalSheet
+                        initialValues={data.getLatestGoal()}
+                        onSave={(nextGoals) => {
+                            data.setGoals(nextGoals.intakeMl, nextGoals.outputMl);
+                            setShowGoals(false);
+                            showToast('Daily goals updated');
+                        }}
+                        onClose={() => setShowGoals(false)}
+                    />
                 )}
             </AnimatePresence>
         </div>

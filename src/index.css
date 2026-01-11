@@ -37,14 +37,21 @@
   --radius-md: 20px;
   --radius-lg: 28px;
   --spacing-xs: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
+  --spacing-sm: 10px;
+  --spacing-md: 14px;
+  --spacing-lg: 20px;
+  --spacing-xl: 28px;
 
   /* Safe Areas */
   --safe-top: env(safe-area-inset-top, 20px);
   --safe-bottom: env(safe-area-inset-bottom, 20px);
+
+  /* Fixed UI chrome (tab bar) */
+  --tab-bar-height: 56px;
+  --tab-bar-offset: 12px;
+  --content-bottom-space: calc(var(--keyboard-height, 0px) + 16px);
+  --dock-aux-size: 60px;
+  --dock-gap: 12px;
 }
 
 * {
@@ -79,6 +86,15 @@ body {
   overflow: hidden;
   position: relative;
 }
+
+html,
+body,
+#root {
+  min-height: 100dvh;
+  background: var(--bg-deep);
+}
+
+/* Avoid overlaying content in the safe area; native WebView background handles this. */
 
 /* --- Animated Mesh Background --- */
 .liquid-background {
@@ -133,8 +149,9 @@ body {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 var(--spacing-lg);
-  padding-bottom: calc(100px + var(--safe-bottom));
+  padding: var(--safe-top) var(--spacing-lg) 0;
+  padding-bottom: 0;
+  scroll-padding-bottom: calc(var(--content-bottom-space) + var(--tab-bar-height) + var(--tab-bar-offset));
   scrollbar-width: none;
 }
 
@@ -143,12 +160,36 @@ body {
   display: none;
 }
 
+.compact-page .screen-header {
+  padding-bottom: var(--spacing-sm);
+}
+
+.compact-page .glass-card {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.compact-page .history-list {
+  gap: var(--spacing-xs);
+}
+
+.compact-page .filter-scroll {
+  padding-bottom: var(--spacing-sm);
+}
+
+.page::after,
+.view-content::after {
+  content: '';
+  display: block;
+  height: calc(var(--safe-bottom) + var(--tab-bar-height) + var(--tab-bar-offset));
+}
+
 /* Screen Header */
 .screen-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: calc(var(--safe-top) + 16px) 0 var(--spacing-md);
+  padding: var(--spacing-md) 0 var(--spacing-md);
 }
 
 .screen-header__title {
@@ -167,6 +208,11 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-top: 2px;
+}
+
+.screen-header__action {
+  align-self: flex-start;
+  margin-top: 16px;
 }
 
 /* Section Headers */
@@ -279,13 +325,13 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: none;
   color: var(--text-dim);
-  margin-top: var(--spacing-sm);
+  margin-top: 0;
 }
 
 /* Quick Action Grids */
 .quick-stack {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   grid-auto-columns: minmax(0, 1fr);
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
@@ -293,7 +339,7 @@ body {
 
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   grid-auto-columns: minmax(0, 1fr);
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
@@ -305,6 +351,12 @@ body {
   min-width: 0;
   padding-left: 10px;
   padding-right: 10px;
+  height: 44px;
+  font-size: 14px;
+}
+
+.secondary-action {
+  border-style: dashed;
 }
 
 /* Chip Buttons */
@@ -555,9 +607,9 @@ body {
 /* --- Tab Bar --- */
 .tab-bar {
   position: fixed;
-  bottom: calc(var(--safe-bottom) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: calc(var(--safe-bottom) + 6px);
+  left: var(--spacing-lg);
+  right: calc(var(--spacing-lg) + var(--dock-aux-size) + var(--dock-gap));
   display: flex;
   align-items: center;
   gap: 6px;
@@ -707,10 +759,10 @@ body {
 /* --- Voice Button --- */
 .voice-button {
   position: fixed;
-  bottom: calc(var(--safe-bottom) + 80px);
-  right: 20px;
-  width: 60px;
-  height: 60px;
+  bottom: calc(var(--safe-bottom) + 6px);
+  right: var(--spacing-lg);
+  width: var(--dock-aux-size);
+  height: var(--dock-aux-size);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary) 0%, #0ea5e9 100%);
   border: none;
