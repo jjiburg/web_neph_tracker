@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatMl } from '../store';
 import { Icons } from '../components/Icons';
-import { API_BASE } from '../config';
+import { API_BASE, isNative } from '../config';
 
 export default function TrendsView({ data, showToast }) {
     const [rangePreset, setRangePreset] = useState('7d');
@@ -69,6 +69,35 @@ export default function TrendsView({ data, showToast }) {
         }
         return days;
     }, [range]);
+
+    const copyToClipboard = async (text) => {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return success;
+    };
+
+    const downloadText = (text, filename, mime) => {
+        const blob = new Blob([text], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     const daySummaries = useMemo(() => {
         const map = new Map();
@@ -375,6 +404,7 @@ export default function TrendsView({ data, showToast }) {
                 })),
             };
 
+            const stamp = `${payload.range.start}-to-${payload.range.end}`;
             if (format === 'csv') {
                 const header = [
                     'date',
@@ -399,28 +429,27 @@ export default function TrendsView({ data, showToast }) {
                     day.dressingState || ''
                 ]);
                 const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `nephtrack-report-${payload.range.start}-to-${payload.range.end}.csv`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                const filename = `nephtrack-report-${stamp}.csv`;
+                try {
+                    if (isNative) throw new Error('Native download not supported');
+                    downloadText(csv, filename, 'text/csv');
+                    showToast('Report exported');
+                } catch {
+                    const copied = await copyToClipboard(csv);
+                    showToast(copied ? 'Report copied to clipboard' : 'Report export failed');
+                }
             } else {
                 const json = JSON.stringify(payload, null, 2);
-                const blob = new Blob([json], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `nephtrack-report-${payload.range.start}-to-${payload.range.end}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                const filename = `nephtrack-report-${stamp}.json`;
+                try {
+                    if (isNative) throw new Error('Native download not supported');
+                    downloadText(json, filename, 'application/json');
+                    showToast('Report exported');
+                } catch {
+                    const copied = await copyToClipboard(json);
+                    showToast(copied ? 'Report copied to clipboard' : 'Report export failed');
+                }
             }
-            showToast('Report exported');
         } catch (e) {
             showToast(`Report export failed: ${e.message}`);
         }

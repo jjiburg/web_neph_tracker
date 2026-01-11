@@ -5,6 +5,7 @@ import ImportSheet from '../components/ImportSheet';
 import DiagnosticsPanel from '../components/DiagnosticsPanel';
 import { Icons } from '../components/Icons';
 import { exportBackup, exportSchemaDefinition } from '../import';
+import { isNative } from '../config';
 
 export default function SummaryView({ data, showToast }) {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -54,22 +55,50 @@ export default function SummaryView({ data, showToast }) {
         showToast('Data imported successfully');
     };
 
+    const copyToClipboard = async (text) => {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return success;
+    };
+
+    const downloadText = (text, filename, mime) => {
+        const blob = new Blob([text], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const handleExport = async () => {
         setExporting(true);
         try {
             const payload = await exportBackup();
             const json = JSON.stringify(payload, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
             const stamp = new Date().toISOString().slice(0, 10);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `nephtrack-backup-${stamp}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            showToast('Backup exported');
+            const filename = `nephtrack-backup-${stamp}.json`;
+            try {
+                if (isNative) throw new Error('Native download not supported');
+                downloadText(json, filename, 'application/json');
+                showToast('Backup exported');
+            } catch {
+                const copied = await copyToClipboard(json);
+                showToast(copied ? 'Backup copied to clipboard' : 'Backup export failed');
+            }
         } catch (e) {
             showToast(`Export failed: ${e.message}`);
         } finally {
@@ -83,17 +112,16 @@ export default function SummaryView({ data, showToast }) {
             const backup = await exportBackup();
             const payload = exportSchemaDefinition(backup);
             const json = JSON.stringify(payload, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
             const stamp = new Date().toISOString().slice(0, 10);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `nephtrack-schema-${stamp}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            showToast('Schema exported');
+            const filename = `nephtrack-schema-${stamp}.json`;
+            try {
+                if (isNative) throw new Error('Native download not supported');
+                downloadText(json, filename, 'application/json');
+                showToast('Schema exported');
+            } catch {
+                const copied = await copyToClipboard(json);
+                showToast(copied ? 'Schema copied to clipboard' : 'Schema export failed');
+            }
         } catch (e) {
             showToast(`Schema export failed: ${e.message}`);
         } finally {
